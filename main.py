@@ -11,10 +11,11 @@ import os
 
 CONFLUENCE_USERNAME = os.getenv("CONFLUENCE_USERNAME")
 CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN")
-XWIKI_BASE_URL = "https://anyanov.demo.xwiki.com/xwiki/rest"
-WIKI_NAME = "xwiki"
-XWIKI_USERNAME = "xwiki:XWiki.VladimirAnyanov"
-XWIKI_PASSWORD = "Oshowiki"
+XWIKI_BASE_URL = os.getenv("XWIKI_BASE_URL", "https://anyanov.demo.xwiki.com/xwiki/rest")
+WIKI_NAME = os.getenv("WIKI_NAME", "xwiki")
+XWIKI_USERNAME = os.getenv("XWIKI_USERNAME", "xwiki:XWiki.VladimirAnyanov")
+XWIKI_PASSWORD = os.getenv("XWIKI_PASSWORD", "Oshowiki")
+
 
 
 def search_xwiki(query: str, top_k: int):
