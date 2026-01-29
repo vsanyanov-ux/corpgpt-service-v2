@@ -19,13 +19,7 @@ class SearchRequest(BaseModel):
     limit: int = 10
     offset: int = 0
 
-class SearchResult(BaseModel):
-    title: str
-    url: str
-    excerpt: str
-
-async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
-    """Search Confluence with pagination"""    
+async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> list:    """Search Confluence with pagination"""    
     if not Confluence_BASE_URL:
         raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
     
@@ -62,10 +56,13 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                     else:
                         excerpt = result.get("excerpt", "")[:200]
                     
-                    results.append(SearchResult(
-                        title=result.get("title", ""),
-                        url=result.get("_links", {}).get("webui", ""),
-                        excerpt=excerpt
+                results.append({
+                                        "score": 1.0,
+                                        "metadata": {
+                                                                    "title": result.get("title", ""),
+                                                                    "source": result.get("_links", {}).get("webui", "")
+                                                                },
+                                        "content": excerpt
                 ))
                                     except Exception as e:
                     print(f"Error processing result: {e}")
@@ -93,21 +90,7 @@ async def health():
 async def search(request: SearchRequest):
     try:
         results = await search_confluence(request.query, request.limit, request.offset)
-        return {
-            "query": request.query,
-            "results": results,
-            "count": len(results),
-            "limit": request.limit,
-            "offset": request.offset
-        }
-    except Exception as e:
-        print(f"Search endpoint error: {e}")
-        return {
-            "query": request.query,
-            "results": [],
-            "count": 0,
-            "error": str(e)
-        }
+                return {"records": results}
 
 @app.get("/retrieval")
 async def retrieval(
@@ -116,57 +99,19 @@ async def retrieval(
     offset: int = Query(0, ge=0)
 ):
     if not query:
-        return {
-            "query": "",
-            "results": [],
-            "count": 0,
-            "limit": limit,
-            "offset": offset,
-            "error": "query parameter is required"
-        }
-    
+        return {"records": []}    
     try:
         results = await search_confluence(query, limit, offset)
-        return {"records": [
-                {
-                    "score": 1.0,
-                    "content": result.excerpt,
-                    "title": result.title,
-                    "metadata": {
-                        "url": result.url
-                    }
-                }
-                for result in results
-            ]
-                    }
+                return {"records": results}
     except Exception as e:
         print(f"Retrieval error: {e}")
-        return {
-            "query": query,
-            "results": [],
-            "count": 0,
-            "error": str(e)
-        }
-
+        return {"records": []}
 @app.post("/retrieval")
 async def retrieval_post(request: SearchRequest):
     try:
         results = await search_confluence(request.query, request.limit, request.offset)
-        return {
-            "query": request.query,
-            "results": results,
-            "count": len(results),
-            "limit": request.limit,
-            "offset": request.offset
-        }
-    except Exception as e:
+        return {"records": results}    except Exception as e:
         print(f"Retrieval POST error: {e}")
-        return {
-            "query": request.query,
-            "results": [],
-            "count": 0,
-            "error": str(e)
-        }
 
 if __name__ == "__main__":
     import uvicorn
