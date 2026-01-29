@@ -55,7 +55,6 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
             
             for result in data.get("results", [])[:limit]:
                 try:
-                    try:
                     # Try to get content from body.view or excerpt
                     body_text = result.get("body", {}).get("view", {}).get("value", "")
                     if body_text:
