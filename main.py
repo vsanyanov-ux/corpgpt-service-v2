@@ -19,8 +19,10 @@ class SearchRequest(BaseModel):
     limit: int = 10
     offset: int = 0
 
-async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> list:    """Search Confluence with pagination"""    
-    if not Confluence_BASE_URL:
+async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> list: 
+        """Search Confluence with pagination"""
+
+        if not Confluence_BASE_URL:
         raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
     
     limit = min(limit, 50)
