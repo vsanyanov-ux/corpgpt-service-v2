@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import httpx
 import os
 import re
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 app = FastAPI()
 
@@ -14,10 +14,15 @@ Confluence_PASSWORD = os.getenv("CONFLUENCE_API_TOKEN", "")
 
 print(f"DEBUG: Confluence_BASE_URL = {Confluence_BASE_URL}")
 
-class SearchRequest(BaseModel):
+# CorpGPT Request Model
+class RetrievalSettings(BaseModel):
+    top_k: int = 10
+    score_threshold: float = 0.5
+
+class RetrievalRequest(BaseModel):
+    knowledge_id: str
     query: str
-    limit: int = 10
-    offset: int = 0
+    retrieval_setting: RetrievalSettings = RetrievalSettings()
 
 class SearchResult(BaseModel):
     title: str
@@ -82,14 +87,10 @@ async def health():
     return {"status": "healthy"}
 
 @app.post("/retrieval")
-async def retrieval(
-    query: str = Query(..., description="Search query"),
-    top_k: int = Query(10, description="Number of results to return"),
-    page: int = Query(1, description="Page number for pagination")
-):
+async def retrieval(request: RetrievalRequest):
     """CorpGPT External Knowledge endpoint"""
-    offset = (page - 1) * top_k
-    results = await search_confluence(query, limit=top_k, offset=offset)
+    top_k = request.retrieval_setting.top_k
+    results = await search_confluence(request.query, limit=top_k, offset=0)
     
     records = []
     for result in results:
