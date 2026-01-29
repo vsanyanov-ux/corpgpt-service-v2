@@ -7,11 +7,11 @@ from typing import Optional, List
 app = FastAPI()
 
 # Load environment variables
-XWIKI_BASE_URL = os.getenv("XWIKI_BASE_URL", "")
-XWIKI_USERNAME = os.getenv("CONFLUENCE_USERNAME", "")
-XWIKI_PASSWORD = os.getenv("CONFLUENCE_API_TOKEN", "")
+Confluence_BASE_URL = os.getenv("Confluence_BASE_URL", "")
+Confluence_USERNAME = os.getenv("CONFLUENCE_USERNAME", "")
+Confluence_PASSWORD = os.getenv("CONFLUENCE_API_TOKEN", "")
 
-print(f"DEBUG: XWIKI_BASE_URL = {XWIKI_BASE_URL}")
+print(f"DEBUG: Confluence_BASE_URL = {Confluence_BASE_URL}")
 
 class SearchRequest(BaseModel):
     query: str
@@ -24,10 +24,9 @@ class SearchResult(BaseModel):
     excerpt: str
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
-    """Search Confluence/XWiki with pagination"""
-    
-    if not XWIKI_BASE_URL:
-        raise HTTPException(status_code=500, detail="XWIKI_BASE_URL is not configured")
+    """Search Confluence with pagination"""    
+    if not Confluence_BASE_URL:
+        raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
     
     limit = min(limit, 50)
     
@@ -36,14 +35,14 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
             cql_query = f'text ~ "{query}"'
             
             response = await client.get(
-                f"{XWIKI_BASE_URL}/rest/api/content/search",
+                f"{Confluence_BASE_URL}/rest/api/content/search",
                 params={
                     "cql": cql_query,
                     "limit": limit,
                     "start": offset,
                     "expand": "body.view"
                 },
-                auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
+                auth=(Confluence_USERNAME, Confluence_PASSWORD),
                 follow_redirects=True
             )
             
@@ -76,8 +75,8 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
 @app.get("/")
 async def root():
     return {
-        "message": "XWiki Search Service is running",
-        "xwiki_configured": bool(XWIKI_BASE_URL)
+        "message": "Confluence Search Service is running",
+        "Confluence_configured": bool(Confluence_BASE_URL)
     }
 
 @app.get("/health")
