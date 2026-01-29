@@ -42,9 +42,9 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                     "limit": limit,
                     "start": offset,
                     "expand": "body.view"
-Add missing closing parentheses for SearchResult                auth=(Confluence_USERNAME, Confluence_PASSWORD),
-                follow_redirects=True
-            )
+                },
+                auth=(Confluence_USERNAME, Confluence_PASSWORD),
+                follow_redirects=True            )
             
             if response.status_code != 200:
                 return []
