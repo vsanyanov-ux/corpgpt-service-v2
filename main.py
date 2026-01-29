@@ -6,9 +6,12 @@ from typing import Optional, List
 
 app = FastAPI()
 
-XWIKI_BASE_URL = os.getenv("XWIKI_BASE_URL", "https://anianov.atlassian.net/wiki/home")
+# Load environment variables
+XWIKI_BASE_URL = os.getenv("XWIKI_BASE_URL", "")
 XWIKI_USERNAME = os.getenv("CONFLUENCE_USERNAME", "")
 XWIKI_PASSWORD = os.getenv("CONFLUENCE_API_TOKEN", "")
+
+print(f"DEBUG: XWIKI_BASE_URL = {XWIKI_BASE_URL}")
 
 class SearchRequest(BaseModel):
     query: str
@@ -22,10 +25,14 @@ class SearchResult(BaseModel):
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
     """Search Confluence/XWiki with pagination"""
-    limit = min(limit, 50)  # Max 50 results
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        try:
+    if not XWIKI_BASE_URL:
+        raise HTTPException(status_code=500, detail="XWIKI_BASE_URL is not configured")
+    
+    limit = min(limit, 50)
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             cql_query = f'text ~ "{query}"'
             
             response = await client.get(
@@ -41,7 +48,7 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
             )
             
             if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail="Search failed")
+                return []
             
             data = response.json()
             results = []
@@ -55,48 +62,64 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                         excerpt=excerpt
                     ))
                 except Exception as e:
-                    print(f"Error: {e}")
+                    print(f"Error processing result: {e}")
                     continue
             
             return results
             
-        except httpx.TimeoutException:
-            raise HTTPException(status_code=504, detail="Search timeout")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+    except httpx.TimeoutException:
+        return []
+    except Exception as e:
+        print(f"Search error: {e}")
+        return []
 
 @app.get("/")
 async def root():
-    return {"message": "XWiki Search Service is running"}
+    return {
+        "message": "XWiki Search Service is running",
+        "xwiki_configured": bool(XWIKI_BASE_URL)
+    }
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 @app.post("/search")
-async def search(
-    request: SearchRequest,
-    limit: Optional[int] = Query(10, ge=1, le=50),
-    offset: Optional[int] = Query(0, ge=0)
-):
-    """Search with pagination"""
+async def search(request: SearchRequest):
     try:
-        search_limit = min(limit, 50)
-        results = await search_confluence(request.query, search_limit, offset)
-        
+        results = await search_confluence(request.query, request.limit, request.offset)
         return {
             "query": request.query,
             "results": results,
             "count": len(results),
-            "limit": search_limit,
-            "offset": offset
+            "limit": request.limit,
+            "offset": request.offset
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Search endpoint error: {e}")
+        return {
+            "query": request.query,
+            "results": [],
+            "count": 0,
+            "error": str(e)
+        }
 
 @app.get("/retrieval")
 async def retrieval(
-    query: str = Query(...),
+    query: Optional[str] = Query(None),
     limit: int = Query(10, ge=1, le=50),
     offset: int = Query(0, ge=0)
 ):
-    """GET endpoint for retrieval"""
+    if not query:
+        return {
+            "query": "",
+            "results": [],
+            "count": 0,
+            "limit": limit,
+            "offset": offset,
+            "error": "query parameter is required"
+        }
+    
     try:
         results = await search_confluence(query, limit, offset)
         return {
@@ -107,7 +130,13 @@ async def retrieval(
             "offset": offset
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Retrieval error: {e}")
+        return {
+            "query": query,
+            "results": [],
+            "count": 0,
+            "error": str(e)
+        }
 
 if __name__ == "__main__":
     import uvicorn
