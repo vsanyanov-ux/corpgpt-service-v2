@@ -55,22 +55,22 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
             
             for result in data.get("results", [])[:limit]:
                 try:
-                    excerpt = result.get("excerpt", "")[:200]
-                    results.append(SearchResult(
-                        title=result.get("title", ""),
-                        url=result.get("_links", {}).get("webui", ""),
+                    try:
                     # Try to get content from body.view or excerpt
                     body_text = result.get("body", {}).get("view", {}).get("value", "")
                     if body_text:
                         # Strip HTML tags and limit to 500 chars
-                        import re
                         excerpt = re.sub(r'<[^>]+>', '', body_text)[:500]
                     else:
-                        excerpt = result.get("excerpt", "")[:200]                    ))
-                except Exception as e:
+                        excerpt = result.get("excerpt", "")[:200]
+                    
+                    results.append(SearchResult(
+                        title=result.get("title", ""),
+                        url=result.get("_links", {}).get("webui", ""),
+                        excerpt=excerpt
+                                    except Exception as e:
                     print(f"Error processing result: {e}")
                     continue
-            
             return results
             
     except httpx.TimeoutException:
