@@ -132,8 +132,7 @@ async def retrieval(
                 }
                 for result in results
             ]
-            ]
-        }
+                    }
     except Exception as e:
         print(f"Retrieval error: {e}")
         return {
