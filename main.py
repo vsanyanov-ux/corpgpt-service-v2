@@ -124,10 +124,10 @@ async def retrieval(
         return {"records": [
                 {
                     "score": 1.0,
-                    "content": result.get("excerpt", ""),
-                    "title": result.get("title", ""),
+                    "content": result.excerpt,
+                    "title": result.title,
                     "metadata": {
-                        "url": result.get("url", "")
+                        "url": result.url
                     }
                 }
                 for result in results
