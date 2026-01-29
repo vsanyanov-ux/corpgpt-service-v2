@@ -7,7 +7,7 @@ from typing import Optional, List
 app = FastAPI()
 
 # Load environment variables
-Confluence_BASE_URL = os.getenv("Confluence_BASE_URL", "")
+Confluence_BASE_URL = os.getenv("CONFLUENCE_BASE_URL", "")
 Confluence_USERNAME = os.getenv("CONFLUENCE_USERNAME", "")
 Confluence_PASSWORD = os.getenv("CONFLUENCE_API_TOKEN", "")
 
