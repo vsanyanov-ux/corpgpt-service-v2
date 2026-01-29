@@ -23,7 +23,7 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> lis
         """Search Confluence with pagination"""
 
     if not Confluence_BASE_URL:
-                raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
+            raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
 
     limit = min(limit, 50)
     try:
