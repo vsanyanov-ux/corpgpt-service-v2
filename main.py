@@ -22,11 +22,10 @@ class SearchRequest(BaseModel):
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> list: 
         """Search Confluence with pagination"""
 
-        if not Confluence_BASE_URL:
-        raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
-    
+    if not Confluence_BASE_URL:
+                raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
+
     limit = min(limit, 50)
-    
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             cql_query = f'text ~ "{query}"'
