@@ -122,11 +122,17 @@ async def retrieval(
     try:
         results = await search_confluence(query, limit, offset)
         return {
-            "query": query,
-            "results": results,
-            "count": len(results),
-            "limit": limit,
-            "offset": offset
+            "records": [
+                {
+                    "score": 1.0,
+                    "metadata": {
+                        "title": result.get("title", ""),
+                        "url": result.get("url", "")
+                    },
+                    "content": result.get("excerpt", "")
+                }
+                for result in results
+            ]
         }
     except Exception as e:
         print(f"Retrieval error: {e}")
