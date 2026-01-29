@@ -138,6 +138,26 @@ async def retrieval(
             "error": str(e)
         }
 
+@app.post("/retrieval")
+async def retrieval_post(request: SearchRequest):
+    try:
+        results = await search_confluence(request.query, request.limit, request.offset)
+        return {
+            "query": request.query,
+            "results": results,
+            "count": len(results),
+            "limit": request.limit,
+            "offset": request.offset
+        }
+    except Exception as e:
+        print(f"Retrieval POST error: {e}")
+        return {
+            "query": request.query,
+            "results": [],
+            "count": 0,
+            "error": str(e)
+        }
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
