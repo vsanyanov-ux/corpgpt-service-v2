@@ -42,8 +42,7 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                     "limit": limit,
                     "start": offset,
                     "expand": "body.view"
-                },
-                auth=(Confluence_USERNAME, Confluence_PASSWORD),
+Add missing closing parentheses for SearchResult                auth=(Confluence_USERNAME, Confluence_PASSWORD),
                 follow_redirects=True
             )
             
@@ -67,6 +66,7 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                         title=result.get("title", ""),
                         url=result.get("_links", {}).get("webui", ""),
                         excerpt=excerpt
+                ))
                                     except Exception as e:
                     print(f"Error processing result: {e}")
                     continue
