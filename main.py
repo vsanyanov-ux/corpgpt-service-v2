@@ -56,11 +56,14 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                 return []
             
             data = response.json()
+                    print(f"DEBUG: Raw Confluence response: {data}")
             results = []
             
             for result in data.get("results", [])[:limit]:
                 # Get full content from body.view.value instead of short excerpt
                 body_html = result.get('body', {}).get('view', {}).get('value', '')
+                        print(f"DEBUG: body_html length: {len(body_html) if body_html else 0}, content: {body_html[:200] if body_html else 'EMPTY'}")
+                        print(f"DEBUG: Processing result: title={result.get('title', 'NO TITLE')}")
                 
                 # Clean HTML tags to get plain text
                 clean_text = re.sub('<[^<]+?>', '', body_html)
@@ -69,6 +72,7 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                 
                 # Use full cleaned text (not just 200 chars)
                 content = clean_text if clean_text else result.get("excerpt", "")
+                        print(f"DEBUG: content length: {len(content) if content else 0}, first 200 chars: {content[:200] if content else 'EMPTY'}")
                 
                 try:
                     results.append(SearchResult(
