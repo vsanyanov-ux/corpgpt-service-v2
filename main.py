@@ -97,10 +97,22 @@ async def health():
     return {"status": "healthy"}
 
 @app.post("/retrieval")
-async def retrieval(query: str = Query(...), top_k: int = Query(10), page: int = Query(1)):
-    """CorpGPT External Knowledge endpoint"""
+async def retrieval(query: Optional[str] = Query(None), top_k: Optional[int] = Query(None), page: Optional[int] = Query(None), body: Optional[RetrievalRequest] = None):    """CorpGPT External Knowledge endpoint"""
     results = await search_confluence(query, limit=top_k, offset=0)
+
+    # Support both query params and JSON body
+    if body:
+                query = query or body.query
+        top_k = top_k or body.retrieval_setting.top_k
     
+    # Set defaults
+    query = query or ""
+    top_k = top_k or 10
+    
+    if not query:
+        raise HTTPException(status_code=400, detail="query parameter is required")
+
+    results = await search_confluence(query, limit=top_k, offset=0)
     records = []
     for result in results:
         records.append({
