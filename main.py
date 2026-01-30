@@ -3,17 +3,9 @@ from pydantic import BaseModel
 import httpx
 import os
 import re
-import logging
 from typing import Optional, List, Dict
 
 app = FastAPI()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 # Load environment variables
 Confluence_BASE_URL = os.getenv("CONFLUENCE_BASE_URL", "")
@@ -64,13 +56,11 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                 return []
             
             data = response.json()
-                    logger.info(f"Confluence API returned {len(data.get('results', []))} results")
             results = []
             
             for result in data.get("results", [])[:limit]:
                 # Get full content from body.view.value instead of short excerpt
                 body_html = result.get('body', {}).get('view', {}).get('value', '')
-                            logger.info(f"Result title: {result.get('title', 'NO TITLE')[:50]}, body_html length: {len(body_html) if body_html else 0}")
                 
                 # Clean HTML tags to get plain text
                 clean_text = re.sub('<[^<]+?>', '', body_html)
@@ -79,7 +69,6 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                 
                 # Use full cleaned text (not just 200 chars)
                 content = clean_text if clean_text else result.get("excerpt", "")
-                            logger.info(f"Final content length: {len(content) if content else 0}, preview: {content[:100] if content else 'EMPTY'}")
                 
                 try:
                     results.append(SearchResult(
