@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import httpx
 import os
@@ -101,7 +101,6 @@ async def retrieval(request: RetrievalRequest):
     """CorpGPT External Knowledge endpoint"""
         results = await search_confluence(request.query, limit=request.retrieval_setting.top_k, offset=0)
     
-    records = []
     for result in results:
                 records.append({
             "metadata": {
