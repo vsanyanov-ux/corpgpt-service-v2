@@ -57,7 +57,7 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
             
             data = response.json()
                         print(f"DEBUG: Raw Confluence response: {data}")
-            results = []
+                results = []
             
             for result in data.get("results", [])[:limit]:
                 # Get full content from body.view.value instead of short excerpt
