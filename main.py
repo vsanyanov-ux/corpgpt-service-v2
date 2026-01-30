@@ -57,18 +57,22 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                 
             data = response.json()
             results = []
+                    print(f"DEBUG Full response: {data}")
+                    print(f"DEBUG Results count: {len(data.get('results', []))}")
+            
             
             for result in data.get("results", [])[:limit]:
-                                # DEBUG: Log raw result from Confluence
-                                print(f"DEBUG Result keys: {list(result.keys())}")
-                                print(f"DEBUG Title: {result.get('title', 'NO_TITLE')}")
-                                print(f"DEBUG Excerpt field: {result.get('excerpt', 'NO_EXCERPT')[:100]}")
-                                if 'body' in result:
-                                                        print(f"DEBUG Body keys: {list(result['body'].keys())}")
-                                                        if 'view' in result['body']:
-                                                                                    print(f"DEBUG Body.view.value: {result['body']['view'].get('value', 'NO_VALUE')[:100]}")
-                                                                            print("---")
-                try:
+                                # DEBUG: Log raw Confluence API response
+                                print(f"DEBUG keys: {list(result.keys())}")
+                                print(f"DEBUG title: {result.get('title', 'NO_TITLE')}")
+                                print(f"DEBUG excerpt: {result.get('excerpt', 'NO_EXCERPT')[:100]}")
+                                print("---")
+                                print(f"DEBUG Body structure: {result.get('body', {})}")
+                                if 'body' in result and 'view' in result['body']:
+                                                        print(f"DEBUG Body.view.value length: {len(result['body']['view'].get('value', ''))}")
+                                                        print(f"DEBUG Body.view.value preview: {result['body']['view'].get('value', '')[:200]}")
+                                    
+                                
                     excerpt = result.get("excerpt", "")[:200]
                     results.append(SearchResult(
                         title=result.get("title", ""),
