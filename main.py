@@ -97,9 +97,9 @@ async def health():
     return {"status": "healthy"}
 
 @app.post("/retrieval")
-async def retrieval(query: str = Query(...), top_k: int = Query(10), page: int = Query(1)):
+async def retrieval(request: RetrievalRequest):
     """CorpGPT External Knowledge endpoint"""
-    results = await search_confluence(query, limit=top_k, offset=0)
+        results = await search_confluence(request.query, limit=request.retrieval_setting.top_k, offset=0)
     
     records = []
     for result in results:
