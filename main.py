@@ -33,9 +33,9 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
     """Search Confluence with pagination"""
     if not Confluence_BASE_URL:
         raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
-
+    
     limit = min(limit, 50)
-
+    
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             cql_query = f'text ~ "{query}"'
@@ -54,37 +54,33 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
             
             if response.status_code != 200:
                 return []
-                
+            
             data = response.json()
             results = []
-                    print(f"DEBUG Full response: {data}")
-                    print(f"DEBUG Results count: {len(data.get('results', []))}")
-            
             
             for result in data.get("results", [])[:limit]:
-                                # DEBUG: Log raw Confluence API response
-                                print(f"DEBUG keys: {list(result.keys())}")
-                                print(f"DEBUG title: {result.get('title', 'NO_TITLE')}")
-                                print(f"DEBUG excerpt: {result.get('excerpt', 'NO_EXCERPT')[:100]}")
-                                print(f"DEBUG Body.view exists: {'body' in result and 'view' in result.get('body', {})}")
-                                if 'body' in result and 'view' in result.get('body', {}):
-                                                        view_value = result['body']['view'].get('value', '')
-                                                        print(f"DEBUG Body.view.value length: {len(view_value)}")
-                                                        print(f"DEBUG Body.view.value preview (first 200 chars): {view_value[:200]}")
-                                    
-                                    
-                                
-                    excerpt = result.get("excerpt", "")[:200]
+                # Get full content from body.view.value instead of short excerpt
+                body_html = result.get('body', {}).get('view', {}).get('value', '')
+                
+                # Clean HTML tags to get plain text
+                clean_text = re.sub('<[^<]+?>', '', body_html)
+                # Remove extra whitespace
+                clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+                
+                # Use full cleaned text (not just 200 chars)
+                content = clean_text if clean_text else result.get("excerpt", "")
+                
+                try:
                     results.append(SearchResult(
                         title=result.get("title", ""),
                         url=result.get("_links", {}).get("webui", ""),
-                        excerpt=excerpt
+                        excerpt=content
                     ))
                 except Exception:
                     continue
-                    
-            return results
             
+            return results
+    
     except Exception as e:
         return []
 
