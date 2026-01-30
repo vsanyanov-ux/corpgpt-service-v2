@@ -66,11 +66,12 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
                                 print(f"DEBUG keys: {list(result.keys())}")
                                 print(f"DEBUG title: {result.get('title', 'NO_TITLE')}")
                                 print(f"DEBUG excerpt: {result.get('excerpt', 'NO_EXCERPT')[:100]}")
-                                print("---")
-                                print(f"DEBUG Body structure: {result.get('body', {})}")
-                                if 'body' in result and 'view' in result['body']:
-                                                        print(f"DEBUG Body.view.value length: {len(result['body']['view'].get('value', ''))}")
-                                                        print(f"DEBUG Body.view.value preview: {result['body']['view'].get('value', '')[:200]}")
+                                print(f"DEBUG Body.view exists: {'body' in result and 'view' in result.get('body', {})}")
+                                if 'body' in result and 'view' in result.get('body', {}):
+                                                        view_value = result['body']['view'].get('value', '')
+                                                        print(f"DEBUG Body.view.value length: {len(view_value)}")
+                                                        print(f"DEBUG Body.view.value preview (first 200 chars): {view_value[:200]}")
+                                    
                                     
                                 
                     excerpt = result.get("excerpt", "")[:200]
