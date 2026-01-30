@@ -114,13 +114,13 @@ async def retrieval(query: str = Query(...), top_k: int = Query(10), page: int =
     
     records = []
     for result in results:
-        records.append({
-            "score": 1.0,
+                records.append({
             "metadata": {
-                "title": result.title,
-                "source": result.url
+                "path": result.url,
+                "description": result.title
             },
+            "score": 1.0,
+            "title": result.title,
             "content": result.excerpt
         })
-    
     return {"records": records}
