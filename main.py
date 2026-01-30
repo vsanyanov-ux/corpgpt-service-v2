@@ -59,6 +59,15 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
             results = []
             
             for result in data.get("results", [])[:limit]:
+                                # DEBUG: Log raw result from Confluence
+                                print(f"DEBUG Result keys: {list(result.keys())}")
+                                print(f"DEBUG Title: {result.get('title', 'NO_TITLE')}")
+                                print(f"DEBUG Excerpt field: {result.get('excerpt', 'NO_EXCERPT')[:100]}")
+                                if 'body' in result:
+                                                        print(f"DEBUG Body keys: {list(result['body'].keys())}")
+                                                        if 'view' in result['body']:
+                                                                                    print(f"DEBUG Body.view.value: {result['body']['view'].get('value', 'NO_VALUE')[:100]}")
+                                                                            print("---")
                 try:
                     excerpt = result.get("excerpt", "")[:200]
                     results.append(SearchResult(
