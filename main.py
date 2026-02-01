@@ -114,6 +114,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 return []
             
             data = response.json()
+                        print(f"DEBUG XWiki Response: {data}")
             results: List[SearchResult] = []
             
             for item in data.get("searchResults", []):
