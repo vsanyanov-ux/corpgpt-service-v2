@@ -151,24 +151,24 @@ async def health():
 @app.post("/retrieval")
 async def retrieval(request: RetrievalRequest):
     """CorpGPT External Knowledge endpoint"""
-if request.knowledge_id == "xwiki":
-            results = await search_xwiki(
-                            request.query,
-                            limit=request.retrieval_setting.top_k,
-                            offset=0
-                        )
-        elif request.knowledge_id == "confluence":
-                    results = await search_confluence(
-                                    request.query,
-                                    limit=request.retrieval_setting.top_k,
-                                    offset=0
-                                )
-                else:
-                            results = await search_confluence(
-                                            request.query,
-                                            limit=request.retrieval_setting.top_k,
-                                            offset=0
-                                        )
+                                            if request.knowledge_id == "xwiki":
+                                                        results = await search_xwiki(
+                                                                        request.query,
+                                                                        limit=request.retrieval_setting.top_k,
+                                                                        offset=0
+                                                                    )
+                                                    elif request.knowledge_id == "confluence":
+                                                                results = await search_confluence(
+                                                                                request.query,
+                                                                                limit=request.retrieval_setting.top_k,
+                                                                                offset=0
+                                                                            )
+                                                            else:
+                                                                        results = await search_confluence(
+                                                                                        request.query,
+                                                                                        limit=request.retrieval_setting.top_k,
+                                                                                        offset=0
+                                                                                    )
         
     records = []
     
