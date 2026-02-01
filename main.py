@@ -11,6 +11,9 @@ app = FastAPI()
 Confluence_BASE_URL = os.getenv("CONFLUENCE_BASE_URL", "")
 Confluence_USERNAME = os.getenv("CONFLUENCE_USERNAME", "")
 Confluence_PASSWORD = os.getenv("CONFLUENCE_API_TOKEN", "")
+XWIKI_BASE_URL = os.getenv("XWIKI_BASE_URL", "")
+XWIKI_USERNAME = os.getenv("XWIKI_USERNAME", "")
+XWIKI_PASSWORD = os.getenv("XWIKI_PASSWORD", "")
 
 print(f"DEBUG: Confluence_BASE_URL = {Confluence_BASE_URL}")
 
@@ -84,6 +87,55 @@ async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> Lis
     except Exception as e:
         return []
 
+async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
+        """Search XWiki using its REST API."""
+        if not XWIKI_BASE_URL:
+                    raise HTTPException(status_code=500, detail="XWIKI_BASE_URL is not configured")
+
+    limit = min(limit, 50)
+
+    try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                                response = await client.get(
+                                                    f"{XWIKI_BASE_URL}/rest/wikis/xwiki/search",
+                                                    params={
+                                                                            "q": query,
+                                                                            "number": limit,
+                                                                            "start": offset,
+                                                                            "scope": "name,content"
+                                                                        },
+                                                    auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
+                                                    follow_redirects=True
+                                                )
+
+            if response.status_code != 200:
+                                return []
+
+            data = response.json()
+            results: List[SearchResult] = []
+
+            for item in data.get("searchResults", []):
+                                title = item.get("pageTitle", "")
+                                url = item.get("url", "")
+                                snippet = item.get("excerpt", "") or item.get("content", "")
+
+                clean_text = re.sub('<[^<]+?>', '', snippet)
+                clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+
+                try:
+                                        results.append(SearchResult(
+                                                                    title=title,
+                                                                    url=url,
+                                                                    excerpt=clean_text
+                                                                ))
+                                    except Exception:
+                                                            continue
+
+            return results
+
+    except Exception:
+        return []
+
 @app.get("/")
 async def root():
     return {
@@ -99,7 +151,24 @@ async def health():
 @app.post("/retrieval")
 async def retrieval(request: RetrievalRequest):
     """CorpGPT External Knowledge endpoint"""
-    results = await search_confluence(request.query, limit=request.retrieval_setting.top_k, offset=0)
+if request.knowledge_id == "xwiki":
+            results = await search_xwiki(
+                            request.query,
+                            limit=request.retrieval_setting.top_k,
+                            offset=0
+                        )
+        elif request.knowledge_id == "confluence":
+                    results = await search_confluence(
+                                    request.query,
+                                    limit=request.retrieval_setting.top_k,
+                                    offset=0
+                                )
+                else:
+                            results = await search_confluence(
+                                            request.query,
+                                            limit=request.retrieval_setting.top_k,
+                                            offset=0
+                                        )
         
     records = []
     
