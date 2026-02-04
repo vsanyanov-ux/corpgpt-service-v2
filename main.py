@@ -135,29 +135,30 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             # Fallback: если полный контент не достали — используем snippet из поиска
             snippet = page_html or item.get("excerpt", "") or item.get("content", "")
             
-            # Чистим HTML и приводим пробелы
+           # 1. Clean data first
             clean_text = re.sub(r"<[^>]+>", " ", snippet)
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
-            
+
+            # 2. Guard clause: Skip invalid data early
             if not clean_text:
-                # пустые документы не отдаём в CorpGPT
                 continue
-                try:
-                results.append(SearchResult(
-                    title=title,
-                    url=url,
-                    excerpt=clean_text
-                ))
-            except Exception:
+
+            # 3. Specific operation block
+            try:
+            # We only wrap the object creation and appending
+            new_result = SearchResult(
+                title=title,
+                url=url,
+                excerpt=clean_text
+            )
+            results.append(new_result)
+            except Exception as e:
+            # Logging the error helps you know WHY it failed
+                print(f"Failed to process result: {e}")
                 continue
-            
-            except Exception:
-                    continue
-            
+
+            # 4. Return results ONLY after the loop finishes
             return results
-    
-    except Exception:
-        return []
 
 @app.get("/")
 async def root():
