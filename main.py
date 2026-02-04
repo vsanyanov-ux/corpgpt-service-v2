@@ -146,10 +146,10 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             # 3. Specific operation block
             try:
             # We only wrap the object creation and appending
-            new_result = SearchResult(
-                title=title,
-                url=url,
-                excerpt=clean_text
+                new_result = SearchResult(
+                    title=title,
+                    url=url,
+                    excerpt=clean_text
             )
             results.append(new_result)
             except Exception as e:
