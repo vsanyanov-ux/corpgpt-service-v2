@@ -158,7 +158,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 continue
 
     # 4. Return results ONLY after the loop finishes
-    return results
+return results
 
 @app.get("/")
 async def root():
