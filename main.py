@@ -150,15 +150,15 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     title=title,
                     url=url,
                     excerpt=clean_text
-            )
-            results.append(new_result)
+                )
+                results.append(new_result)
             except Exception as e:
             # Logging the error helps you know WHY it failed
                 print(f"Failed to process result: {e}")
                 continue
 
-            # 4. Return results ONLY after the loop finishes
-            return results
+    # 4. Return results ONLY after the loop finishes
+    return results
 
 @app.get("/")
 async def root():
