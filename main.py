@@ -119,18 +119,39 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             for item in data.get("searchResults", []):
                 title = item.get("pageTitle", "")
                 url = item.get("url", "")
-                snippet = item.get("excerpt", "") or item.get("content", "")
-                
-                clean_text = re.sub('<[^<]+?>', '', snippet)
-                clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-                
+                page_html = ""
+            try:
+                # попытаемся получить ПОЛНЫЙ контент страницы отдельным запросом
+                page_resp = await client.get(
+                    f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{item.get('pageFullName', '')}/content",
+                    auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
+                    follow_redirects=True
+                )
+                if page_resp.status_code == 200:
+                    page_html = page_resp.text
+            except Exception:
+                page_html = ""
+            
+            # Fallback: если полный контент не достали — используем snippet из поиска
+            snippet = page_html or item.get("excerpt", "") or item.get("content", "")
+            
+            # Чистим HTML и приводим пробелы
+            clean_text = re.sub(r"<[^>]+>", " ", snippet)
+            clean_text = re.sub(r"\s+", " ", clean_text).strip()
+            
+            if not clean_text:
+                # пустые документы не отдаём в CorpGPT
+                continue
                 try:
-                    results.append(SearchResult(
-                        title=title,
-                        url=url,
-                        excerpt=clean_text
-                    ))
-                except Exception:
+                results.append(SearchResult(
+                    title=title,
+                    url=url,
+                    excerpt=clean_text
+                ))
+            except Exception:
+                continue
+            
+            except Exception:
                     continue
             
             return results
