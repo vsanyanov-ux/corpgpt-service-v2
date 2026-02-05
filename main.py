@@ -135,7 +135,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             # Fallback: если полный контент не достали — используем snippet из поиска
             snippet = page_html or item.get("excerpt", "") or item.get("content", "")
             
-           # 1. Clean data first
+            # 1. Clean data first
             clean_text = re.sub(r"<[^>]+>", " ", snippet)
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
 
