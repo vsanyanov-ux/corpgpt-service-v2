@@ -107,7 +107,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             headers={"Accept": "application/json"},
             auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
             follow_redirects=True
-            )
+        )
             
         if response.status_code != 200:
             return []
@@ -119,45 +119,45 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             title = item.get("pageTitle", "")
             url = item.get("url", "")
             page_html = ""
-        try:
-            # попытаемся получить ПОЛНЫЙ контент страницы отдельным запросом
-            page_resp = await client.get(
-                f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{item.get('pageFullName', '')}/content",
-                auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
-                follow_redirects=True
-            )
-            if page_resp.status_code == 200:
-                page_html = page_resp.text
-        except Exception:
-            page_html = ""
+            try:
+                # попытаемся получить ПОЛНЫЙ контент страницы отдельным запросом
+                page_resp = await client.get(
+                    f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{item.get('pageFullName', '')}/content",
+                    auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
+                    follow_redirects=True
+                )
+                if page_resp.status_code == 200:
+                    page_html = page_resp.text
+            except Exception:
+                page_html = ""
             
-        # Fallback: если полный контент не достали — используем snippet из поиска
-        snippet = page_html or item.get("excerpt", "") or item.get("content", "")
-        
-        # 1. Clean data first
-        clean_text = re.sub(r"<[^>]+>", " ", snippet)
-        clean_text = re.sub(r"\s+", " ", clean_text).strip()
+            # Fallback: если полный контент не достали — используем snippet из поиска
+            snippet = page_html or item.get("excerpt", "") or item.get("content", "")
+            
+            # 1. Clean data first
+            clean_text = re.sub(r"<[^>]+>", " ", snippet)
+            clean_text = re.sub(r"\s+", " ", clean_text).strip()
+    
+            # 2. Guard clause: Skip invalid data early
+            if not clean_text:
+                continue
+    
+            # 3. Specific operation block
+            try:
+            # We only wrap the object creation and appending
+                new_result = SearchResult(
+                    title=title,
+                    url=url,
+                    excerpt=clean_text
+                )
+                results.append(new_result)
+            except Exception as e:
+            # Logging the error helps you know WHY it failed
+                print(f"Failed to process result: {e}")
+                continue
 
-        # 2. Guard clause: Skip invalid data early
-        if not clean_text:
-            continue
-
-        # 3. Specific operation block
-        try:
-        # We only wrap the object creation and appending
-            new_result = SearchResult(
-                title=title,
-                url=url,
-                excerpt=clean_text
-            )
-            results.append(new_result)
-        except Exception as e:
-        # Logging the error helps you know WHY it failed
-            print(f"Failed to process result: {e}")
-            continue
-
-    # 4. Return results ONLY after the loop finishes
-    return results
+        # 4. Return results ONLY after the loop finishes
+        return results
 
 @app.get("/")
 async def root():
