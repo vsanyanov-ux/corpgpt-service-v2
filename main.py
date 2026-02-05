@@ -126,24 +126,51 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             page_html = ""
             print(f"🔍 DEBUG: Fetching full content for pageFullName='{item.get('pageFullName', '')}'") # DEBUG
             page_full_name = item.get('pageFullName', '')
-            encoded_page_name = quote(page_full_name, safe='')  # ← ДОБАВИТЬ
-            print(f"🔗 DEBUG: Requested URL = {XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{encoded_page_name}/content") # DEBUG
-            try:
-                # попытаемся получить ПОЛНЫЙ контент страницы отдельным запросом
-                page_resp = await client.get(
-                    f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{encoded_page_name}/content",
-                    auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
-                    follow_redirects=True
-                )
-                if page_resp.status_code == 200:
-                    page_html = page_resp.text
-                    print(f"✅ DEBUG: Got page_html, length={len(page_html)}") # DEBUG
-                else:
-                    print(f"⚠️ DEBUG: page_resp.status_code = {page_resp.status_code}") # DEBUG
-                    print(f"📄 DEBUG: page_resp.text = '{page_resp.text[:200]}'")  # DEBUG (сообщение об ошибке)
-            except Exception:
-                print(f"❌ ERROR: Failed to fetch page content for '{item.get('pageFullName', '')}'") # DEBUG
-                page_html = ""
+            encoded_page_name = quote(page_full_name, safe='.')
+
+            # XWiki instances differ: base URL may already include /xwiki.
+            base_url = XWIKI_BASE_URL.rstrip('/')
+            base_variants = [base_url]
+            if base_url.endswith('/xwiki'):
+                base_variants.append(base_url[:-6])
+            else:
+                base_variants.append(f"{base_url}/xwiki")
+
+            space_name, page_name = (page_full_name.rsplit('.', 1) if '.' in page_full_name else ('Main', page_full_name))
+            encoded_space_name = quote(space_name, safe='')
+            encoded_leaf_page_name = quote(page_name, safe='')
+
+            candidate_urls = []
+            for base in base_variants:
+                candidate_urls.extend([
+                    f"{base}/rest/wikis/xwiki/pages/{encoded_page_name}/content",
+                    f"{base}/rest/wikis/xwiki/pages/{encoded_page_name}",
+                    f"{base}/rest/wikis/xwiki/spaces/{encoded_space_name}/pages/{encoded_leaf_page_name}/content",
+                    f"{base}/rest/wikis/xwiki/spaces/{encoded_space_name}/pages/{encoded_leaf_page_name}"
+                ])
+
+            # remove duplicates while preserving order
+            unique_candidate_urls = list(dict.fromkeys(candidate_urls))
+
+            for candidate_url in unique_candidate_urls:
+                print(f"🔗 DEBUG: Trying URL = {candidate_url}")
+                try:
+                    page_resp = await client.get(
+                        candidate_url,
+                        auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
+                        follow_redirects=True,
+                        headers={"Accept": "application/json, application/xml, text/plain, text/html"}
+                    )
+                    if page_resp.status_code == 200:
+                        page_html = page_resp.text
+                        print(f"✅ DEBUG: Got page_html from {candidate_url}, length={len(page_html)}")
+                        break
+                    print(f"⚠️ DEBUG: URL returned status {page_resp.status_code}")
+                except Exception as e:
+                    print(f"❌ ERROR: Failed URL '{candidate_url}': {e}")
+
+            if not page_html:
+                print(f"⚠️ DEBUG: Could not fetch full page content for '{page_full_name}' from any known endpoint")
 
             # Fallback: если полный контент не достали — используем snippet из поиска
             excerpt = item.get("excerpt", "")
