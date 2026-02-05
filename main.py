@@ -131,11 +131,13 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
                     follow_redirects=True
                 )
+                print(f"🔗 DEBUG: Requested URL = {XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{item.get('pageFullName', '')}/content")  # DEBUG
                 if page_resp.status_code == 200:
                     page_html = page_resp.text
                     print(f"✅ DEBUG: Got page_html, length={len(page_html)}") # DEBUG
                 else:
                     print(f"⚠️ DEBUG: page_resp.status_code = {page_resp.status_code}") # DEBUG
+                    print(f"📄 DEBUG: page_resp.text = '{page_resp.text[:200]}'")  # DEBUG (сообщение об ошибке)
             except Exception:
                 print(f"❌ ERROR: Failed to fetch page content for '{item.get('pageFullName', '')}'") # DEBUG
                 page_html = ""
