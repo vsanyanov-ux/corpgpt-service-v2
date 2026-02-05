@@ -138,7 +138,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             
             # Формируем итоговый URL
             request_url = f"{XWIKI_BASE_URL}/rest/wikis/xwiki/pages/{encoded_path}/content"
-            print(f"🔗 DEBUG: Requested URL = {request_url}")
+            print(f"!!! NEW CODE !!! Requested URL = {request_url}")
             
             try:
                 # Попытаемся получить полный контент страницы отдельным запросом
