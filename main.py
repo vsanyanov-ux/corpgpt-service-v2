@@ -141,8 +141,9 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             encoded_path = "/pages/".join(path_parts)
             # ------------------------------
             
-            # Формируем итоговый URL
-            request_url = f"{XWIKI_BASE_URL}/rest/wikis/xwiki/pages/{encoded_path}/content"
+            # Используй pageFullName напрямую, просто удали .WebHome
+            page_name_only = re.sub(r'\.webhome$', '', page_full_name, flags=re.IGNORECASE)
+            request_url = f"{XWIKI_BASE_URL}/rest/wikis/xwiki/spaces/{quote(page_name_only, safe='')}/pages/WebHome"
             print(f"🔗 DEBUG: Requested URL = {request_url}")
             
             try:
