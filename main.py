@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import httpx
 import os
 import re
+import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict
 from urllib.parse import quote
 
@@ -155,14 +156,22 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 )
                 
                 if page_resp.status_code == 200:
-                    page_html = page_resp.text
-                    print(f"✅ DEBUG: Got page_html, length={len(page_html)}")
-                else:
-                    print(f"⚠️ DEBUG: page_resp.status_code = {page_resp.status_code}")
-                    if page_resp.status_code == 404:
-                        print(f"❌ DEBUG: Page not found (404): {request_url}")
-                        print(f"📄 DEBUG: page_resp.text = '{page_resp.text[:100]}'")
+                    try:
+                        root = ET.fromstring(page_resp.text)
+                        # Найти content элемент с namespace
+                        ns = {'xwiki': 'http://www.xwiki.org'}
+                        content_elem = root.find('.//xwiki:content', ns)
+                        
+                        if content_elem is not None and content_elem.text:
+                            page_html = content_elem.text
+                            # Очистить от XML тегов
+                            page_html = re.sub(r'<[^>]+>', ' ', page_html)
+                            page_html = re.sub(r'\s+', ' ', page_html).strip()                        
+                    except Exception as e:
+                        print(f"Error parsing XML: {e}")
                         page_html = ""
+                else:
+                    page_html = ""
             except Exception as e:
                 print(f"❌ ERROR: Failed to fetch page content for '{page_full_name}': {e}")
                 page_html = ""
