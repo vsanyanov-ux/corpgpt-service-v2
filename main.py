@@ -127,7 +127,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             excerpt = item.get("excerpt", "")
             content = item.get("content", "")
             print(f"📄 DEBUG: excerpt='{excerpt[:50]}...', content='{content[:50]}...'") # DEBUG
-            snippet = page_html or excerpt or content
+            snippet = excerpt or content
             print(f"📦 DEBUG: final snippet length={len(snippet)}, content='{snippet[:100]}...'") # DEBUG
             
             # 1. Clean data first
