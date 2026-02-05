@@ -107,7 +107,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                             headers={"Accept": "application/json"},
             auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
             follow_redirects=True
-        )
+            )
             
             if response.status_code != 200:
                 return []
