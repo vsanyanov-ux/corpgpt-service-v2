@@ -124,25 +124,39 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             print(f"📄 DEBUG: Processing item: {title}")  # DEBUG 4
             url = item.get("url", "")
             page_html = ""
-            print(f"🔍 DEBUG: Fetching full content for pageFullName='{item.get('pageFullName', '')}'") # DEBUG
+            
+            # Получаем полное имя и готовим иерархический путь
             page_full_name = item.get('pageFullName', '')
-            encoded_page_name = quote(page_full_name, safe='')  # ← ДОБАВИТЬ
-            print(f"🔗 DEBUG: Requested URL = {XWIKI_BASE_URL}/rest/wikis/xwiki/pages/{encoded_page_name}/content") # DEBUG
+            print(f"🔍 DEBUG: Fetching full content for pageFullName='{page_full_name}'")
+            
+            # Удаляем технический суффикс WebHome, если он присутствует
+            temp_name = page_full_name[:-8] if page_full_name.endswith('.WebHome') else page_full_name
+            
+            # Разбиваем по точкам и собираем путь через /pages/ для REST API
+            path_parts = temp_name.split('.')
+            encoded_path = "/pages/".join([quote(part, safe='') for part in path_parts])
+            
+            # Формируем итоговый URL
+            request_url = f"{XWIKI_BASE_URL}/rest/wikis/xwiki/pages/{encoded_path}/content"
+            print(f"🔗 DEBUG: Requested URL = {request_url}")
+            
             try:
-                # попытаемся получить ПОЛНЫЙ контент страницы отдельным запросом
+                # Попытаемся получить полный контент страницы отдельным запросом
                 page_resp = await client.get(
-                    f"{XWIKI_BASE_URL}/rest/wikis/xwiki/pages/{encoded_page_name}/content",
+                    request_url,
                     auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
                     follow_redirects=True
                 )
+                
                 if page_resp.status_code == 200:
                     page_html = page_resp.text
-                    print(f"✅ DEBUG: Got page_html, length={len(page_html)}") # DEBUG
+                    print(f"✅ DEBUG: Got page_html, length={len(page_html)}")
                 else:
-                    print(f"⚠️ DEBUG: page_resp.status_code = {page_resp.status_code}") # DEBUG
-                    print(f"📄 DEBUG: page_resp.text = '{page_resp.text[:200]}'")  # DEBUG (сообщение об ошибке)
-            except Exception:
-                print(f"❌ ERROR: Failed to fetch page content for '{item.get('pageFullName', '')}'") # DEBUG
+                    print(f"⚠️ DEBUG: page_resp.status_code = {page_resp.status_code}")
+                    print(f"📄 DEBUG: page_resp.text = '{page_resp.text[:200]}'")
+                    
+            except Exception as e:
+                print(f"❌ ERROR: Failed to fetch page content for '{page_full_name}': {e}")
                 page_html = ""
 
             # Fallback: если полный контент не достали — используем snippet из поиска
