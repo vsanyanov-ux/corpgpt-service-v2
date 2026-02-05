@@ -153,7 +153,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     follow_redirects=True
                 )
                 
-if page_resp.status_code == 200:
+            if page_resp.status_code == 200:
                 page_html = page_resp.text
                 print(f"✅ DEBUG: Got page_html, length={len(page_html)}")
             else:
