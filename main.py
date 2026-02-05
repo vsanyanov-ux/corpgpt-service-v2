@@ -161,7 +161,10 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 if page_resp.status_code == 404:
                     print(f"❌ DEBUG: Page not found (404): {request_url}")
                 print(f"📄 DEBUG: page_resp.text = '{page_resp.text[:100]}'")
-                page_html = ""ch page content for '{page_full_name}': {e}")
+page_html = ""
+            except Exception as e:
+                print(f"❌ ERROR: Failed to fetch page content for '{page_full_name}': {e}")
+                page_html = ""
                 page_html = ""
 
             # Fallback: если полный контент не достали — используем snippet из поиска
