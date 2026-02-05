@@ -95,20 +95,19 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
     
     limit = min(limit, 50)
     
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{XWIKI_BASE_URL}/rest/wikis/xwiki/search",
-                params={
-                    "q": query,
-                    "number": limit,
-                    "start": offset,
-                    "scope": "name,content"
-                },
-                                headers={"Accept": "application/json"},
-                auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
-                follow_redirects=True
-            )
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(
+            f"{XWIKI_BASE_URL}/rest/wikis/xwiki/search",
+            params={
+                "q": query,
+                "number": limit,
+                "start": offset,
+                "scope": "name,content"
+            },
+                            headers={"Accept": "application/json"},
+            auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
+            follow_redirects=True
+        )
             
             if response.status_code != 200:
                 return []
