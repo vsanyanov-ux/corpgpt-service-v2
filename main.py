@@ -109,8 +109,8 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             follow_redirects=True
         )
             
-            if response.status_code != 200:
-                return []
+        if response.status_code != 200:
+                            return []
             
             data = response.json()
             results: List[SearchResult] = []
