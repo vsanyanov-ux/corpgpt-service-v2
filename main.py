@@ -4,6 +4,7 @@ import httpx
 import os
 import re
 from typing import Optional, List, Dict
+from urllib.parse import quote
 
 app = FastAPI()
 
@@ -124,10 +125,13 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             url = item.get("url", "")
             page_html = ""
             print(f"🔍 DEBUG: Fetching full content for pageFullName='{item.get('pageFullName', '')}'") # DEBUG
+            page_full_name = item.get('pageFullName', '')
+            encoded_page_name = quote(page_full_name, safe='')  # ← ДОБАВИТЬ
+            print(f"🔗 DEBUG: Requested URL = {XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{encoded_page_name}/content") # DEBUG
             try:
                 # попытаемся получить ПОЛНЫЙ контент страницы отдельным запросом
                 page_resp = await client.get(
-                    f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{item.get('pageFullName', '')}/content",
+                    f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{encoded_page_name}/content",
                     auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
                     follow_redirects=True
                 )
