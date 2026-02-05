@@ -122,26 +122,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             title = item.get("pageTitle", "")
             print(f"📄 DEBUG: Processing item: {title}")  # DEBUG 4
             url = item.get("url", "")
-            page_html = ""
-            print(f"🔍 DEBUG: Fetching full content for pageFullName='{item.get('pageFullName', '')}'") # DEBUG
-            try:
-                # попытаемся получить ПОЛНЫЙ контент страницы отдельным запросом
-                page_resp = await client.get(
-                    f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{item.get('pageFullName', '')}/content",
-                    auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
-                    follow_redirects=True
-                )
-                print(f"🔗 DEBUG: Requested URL = {XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/pages/{item.get('pageFullName', '')}/content")  # DEBUG
-                if page_resp.status_code == 200:
-                    page_html = page_resp.text
-                    print(f"✅ DEBUG: Got page_html, length={len(page_html)}") # DEBUG
-                else:
-                    print(f"⚠️ DEBUG: page_resp.status_code = {page_resp.status_code}") # DEBUG
-                    print(f"📄 DEBUG: page_resp.text = '{page_resp.text[:200]}'")  # DEBUG (сообщение об ошибке)
-            except Exception:
-                print(f"❌ ERROR: Failed to fetch page content for '{item.get('pageFullName', '')}'") # DEBUG
-                page_html = ""
-            
+                        
             # Fallback: если полный контент не достали — используем snippet из поиска
             excerpt = item.get("excerpt", "")
             content = item.get("content", "")
