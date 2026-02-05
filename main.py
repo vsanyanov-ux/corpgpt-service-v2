@@ -129,12 +129,17 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             page_full_name = item.get('pageFullName', '')
             print(f"🔍 DEBUG: Fetching full content for pageFullName='{page_full_name}'")
             
-            # Удаляем технический суффикс WebHome, если он присутствует
-            temp_name = page_full_name[:-8] if page_full_name.endswith('.WebHome') else page_full_name
+            # --- ЖЕСТКИЙ БЛОК ОБРАБОТКИ ---
+            import re
+            # 1. Принудительно удаляем .WebHome в любом регистре через регулярку
+            temp_name = re.sub(r'\.webhome$', '', page_full_name, flags=re.IGNORECASE)
             
-            # Разбиваем по точкам и собираем путь через /pages/ для REST API
-            path_parts = temp_name.split('.')
-            encoded_path = "/pages/".join([quote(part, safe='') for part in path_parts])
+            # 2. Разбиваем по точкам, фильтруем пустые части и кодируем каждую отдельно
+            path_parts = [quote(p.strip(), safe='') for p in temp_name.split('.') if p.strip()]
+            
+            # 3. Собираем иерархию через /pages/
+            encoded_path = "/pages/".join(path_parts)
+            # ------------------------------
             
             # Формируем итоговый URL
             request_url = f"{XWIKI_BASE_URL}/rest/wikis/xwiki/pages/{encoded_path}/content"
