@@ -94,6 +94,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
         raise HTTPException(status_code=500, detail="XWIKI_BASE_URL is not configured")
     
     limit = min(limit, 50)
+    print(f"🔍 DEBUG: Searching for '{query}' with limit {limit}")  # DEBUG 1
     
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(
@@ -110,13 +111,16 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
         )
             
         if response.status_code != 200:
+            print(f"❌ DEBUG: Bad response code {response.status_code}")  # DEBUG 2
             return []
             
         data = response.json()
+        print(f"✅ DEBUG: Got {len(data.get('searchResults', []))} results from API")  # DEBUG 3
         results: List[SearchResult] = []
             
         for item in data.get("searchResults", []):
             title = item.get("pageTitle", "")
+            print(f"📄 DEBUG: Processing item: {title}")  # DEBUG 4
             url = item.get("url", "")
             page_html = ""
             try:
@@ -140,6 +144,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
     
             # 2. Guard clause: Skip invalid data early
             if not clean_text:
+                print(f"⚠️ DEBUG: Skipping empty result for {title}")  # DEBUG 5
                 continue
     
             # 3. Specific operation block
@@ -151,12 +156,15 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     excerpt=clean_text
                 )
                 results.append(new_result)
+                print(f"✅ DEBUG: Added result: {title}")  # DEBUG 6
             except Exception as e:
+                print(f"❌ DEBUG: Error creating result: {e}")  # DEBUG 7
             # Logging the error helps you know WHY it failed
                 print(f"Failed to process result: {e}")
                 continue
 
         # 4. Return results ONLY after the loop finishes
+        print(f"🏁 DEBUG: Returning {len(results)} results")  # DEBUG 8
         return results
 
 @app.get("/")
