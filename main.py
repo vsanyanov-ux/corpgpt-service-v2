@@ -123,6 +123,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             print(f"📄 DEBUG: Processing item: {title}")  # DEBUG 4
             url = item.get("url", "")
             page_html = ""
+            print(f"🔍 DEBUG: Fetching full content for pageFullName='{item.get('pageFullName', '')}'") # DEBUG
             try:
                 # попытаемся получить ПОЛНЫЙ контент страницы отдельным запросом
                 page_resp = await client.get(
@@ -132,17 +133,25 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 )
                 if page_resp.status_code == 200:
                     page_html = page_resp.text
+                    print(f"✅ DEBUG: Got page_html, length={len(page_html)}") # DEBUG
+                else:
+                    print(f"⚠️ DEBUG: page_resp.status_code = {page_resp.status_code}") # DEBUG
             except Exception:
+                print(f"❌ ERROR: Failed to fetch page content for '{item.get('pageFullName', '')}'") # DEBUG
                 page_html = ""
             
             # Fallback: если полный контент не достали — используем snippet из поиска
-            snippet = page_html or item.get("excerpt", "") or item.get("content", "")
-            print(f"📦 DEBUG: snippet = '{snippet[:100]}'")  # DEBUG
+            excerpt = item.get("excerpt", "")
+            content = item.get("content", "")
+            print(f"📄 DEBUG: excerpt='{excerpt[:50]}...', content='{content[:50]}...'") # DEBUG
+            snippet = page_html or excerpt or content
+            print(f"📦 DEBUG: final snippet length={len(snippet)}, content='{snippet[:100]}...'") # DEBUG
             
             # 1. Clean data first
+            print(f"🧹 DEBUG: BEFORE regex - snippet length={len(snippet)}") # DEBUG
             clean_text = re.sub(r"<[^>]+>", " ", snippet)
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
-            print(f"✂️ DEBUG: clean_text after regex = '{clean_text[:100]}'")  # DEBUG
+            print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")  # DEBUG
     
             # 2. Guard clause: Skip invalid data early
             if not clean_text:
