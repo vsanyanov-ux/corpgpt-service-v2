@@ -137,14 +137,16 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             
             # Fallback: если полный контент не достали — используем snippet из поиска
             snippet = page_html or item.get("excerpt", "") or item.get("content", "")
+            print(f"📦 DEBUG: snippet = '{snippet[:100]}'")  # DEBUG
             
             # 1. Clean data first
             clean_text = re.sub(r"<[^>]+>", " ", snippet)
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
+            print(f"✂️ DEBUG: clean_text after regex = '{clean_text[:100]}'")  # DEBUG
     
             # 2. Guard clause: Skip invalid data early
             if not clean_text:
-                print(f"⚠️ DEBUG: Skipping empty result for {title}")  # DEBUG 5
+                print(f"⚠️ DEBUG: clean_text is EMPTY for {title}")  # DEBUG 5
                 continue
     
             # 3. Specific operation block
