@@ -126,23 +126,29 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
         results: List[SearchResult] = []
             
         for item in data.get("searchResults", []):
-            title = item.get("pageTitle", "")
+            # 1. Правильный заголовок и URL из XWiki JSON
+            title = item.get("title") or item.get("pageFullName") or ""
+            links = item.get("links") or []
+            url = ""
+            if links:
+                url = links[0].get("href") or ""
+        
             print(f"📄 DEBUG: Processing item: {title}")  # DEBUG 4
-            url = item.get("url", "")
+        
             page_html = ""
-            
+        
             # Получаем полное имя и готовим иерархический путь
-            page_full_name = item.get('pageFullName', '')
+            page_full_name = item.get("pageFullName", "")
             print(f"🔍 DEBUG: Fetching full content for pageFullName='{page_full_name}'")
-            
+        
             # Правильная обработка pageFullName
             request_url = None  # чтобы переменная всегда существовала
-            
+        
             if page_full_name:
                 try:
                     # ШАГ 1: Удаляем .WebHome ПЕРЕД разбиением
-                    page_name_clean = re.sub(r'\\.WebHome$', '', page_full_name, flags=re.IGNORECASE)
-            
+                    page_name_clean = re.sub(r'\.WebHome$', '', page_full_name, flags=re.IGNORECASE)
+        
                     # ШАГ 2: Разбиваем по последней точке
                     parts = page_name_clean.rsplit('.', 1)
                     if len(parts) == 2:
@@ -150,33 +156,32 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     else:
                         space_path = "xwiki"
                         page_name = page_name_clean
-            
+        
                     # ШАГ 3: Собираем правильный REST URL (БЕЗ /WebHome)
-                    # Если в поисковой выдаче уже есть полный URL страницы — просто добираем /content
                     if url:
                         request_url = f"{url}/content"
                     else:
-                        # Fallback: конструируем URL вручную
                         page_parts = page_name_clean.split('.')
-            
+        
                         if len(page_parts) > 1:
                             spaces_path = '/'.join([quote(p, safe='') for p in page_parts[:-1]])
                             page_name = quote(page_parts[-1], safe='')
                         else:
                             spaces_path = "xwiki"
                             page_name = quote(page_parts[0], safe='')
-            
+        
                         request_url = (
                             f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/"
                             f"spaces/{spaces_path}/pages/{page_name}/content"
                         )
-            
+        
                 except Exception as e:
                     print(
                         f"❌ ERROR: Failed to parse URL for '{page_full_name}': {e}, "
                         f"request_url={request_url}"
                     )
                     page_html = ""
+
 
 
             
