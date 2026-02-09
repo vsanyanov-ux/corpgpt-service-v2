@@ -151,6 +151,10 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     # ШАГ 4: Собираем правильный REST URL (БЕЗ /WebHome)
                     request_url = f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/spaces/{encoded_space}/pages/{encoded_page}"
                     print(f"🔗 DEBUG: Requested URL = {request_url}")
+                except Exception as e:
+                    print(f"❌ ERROR: Failed to parse URL for '{page_full_name}': {e}")
+                    page_html = ""
+
 
             
             try:
