@@ -122,7 +122,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
         results: List[SearchResult] = []
             
         for item in data.get("searchResults", []):
-            title = item.get("title") or item.get("pageFullName") or ""
+            title = item.get("title") or item.get("FullName") or ""
             links = item.get("links") or []
             url = ""
             if links:
@@ -203,6 +203,9 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     except Exception as e:
                         print(f"Error parsing XML: {e}")
                         page_html = ""
+                    print(f"📄 DEBUG: RAW page_resp='{page_resp.text[:500]}'")
+                    print(f"📄 DEBUG: page_html_len={len(page_html)}")
+
                 else:
                     page_html = ""
             except Exception as e:
