@@ -117,11 +117,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             return []
             
         data = response.json()
-        print(f"✅ DEBUG: Got {len(data.get('searchResults', []))} results from API")  # DEBUG 3
-
-        # ВРЕМЕННЫЙ глубокий лог всего ответа XWiki (для дебага)
-        import json
-        print(f"🧾 RAW search data: {json.dumps(data, ensure_ascii=False)[:2000]}")
+        print(f"✅ DEBUG: Got {len(data.get('searchResults', []))} results from API")  # DEBUG 3        
 
         results: List[SearchResult] = []
             
@@ -235,10 +231,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
             print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")
             
-            # 2. Guard clause: Skip invalid data early
-            clean_text = re.sub(r"<[^>]+>", " ", snippet)
-            clean_text = re.sub(r"\s+", " ", clean_text).strip()
-            print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")
+            # 2. Guard clause: Skip invalid data early        
             
             if not clean_text:
                 raw_fallback = (excerpt or content or title).strip()
@@ -250,12 +243,12 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
 
 
     
-            # 2. Guard clause: Skip invalid data early
+            # 3. Guard clause: Skip invalid data early
             if not clean_text:
                 print(f"⚠️ DEBUG: clean_text is EMPTY for {title}")  # DEBUG 5
                 continue
     
-            # 3. Specific operation block
+            # 4. Specific operation block
             try:
                 # Подстрахуемся: если title пустой, используем page_full_name
                 safe_title = title or page_full_name
@@ -275,7 +268,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 continue
 
 
-        # 4. Return results ONLY after the loop finishes
+        # 5. Return results ONLY after the loop finishes
         print(f"🏁 DEBUG: Returning {len(results)} results")  # DEBUG 8
         return results
 
