@@ -204,18 +204,36 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 print(f"❌ ERROR: Failed to fetch page content for '{page_full_name}': {e}")
                 page_html = ""
                 
-            # Fallback: если полный контент не достали — используем snippet из поиска
-            excerpt = item.get("excerpt", "")
-            content = item.get("content", "")
-            print(f"📄 DEBUG: excerpt='{excerpt[:50]}...', content='{content[:50]}...'") # DEBUG
+            # Fallback: если полный контент не достали — используем snippet из поиска            
+            excerpt = item.get("excerpt") or ""
+            content = item.get("content") or ""
+            print(f"📄 DEBUG: excerpt_len={len(excerpt)}, content_len={len(content)}")
+            print(f"📄 DEBUG: raw excerpt='{excerpt[:80]}', raw content='{content[:80]}'")
+            
             snippet = page_html or excerpt or content
-            print(f"📦 DEBUG: final snippet length={len(snippet)}, content='{snippet[:100]}...'") # DEBUG
+            print(f"📦 DEBUG: final snippet length={len(snippet)}, content_preview='{snippet[:100]}'")
+            
+            # Если и после этого пусто — не рубим весь ответ, а просто скипаем этот item
+            if not snippet.strip():
+                print(f"⚠️ DEBUG: snippet is EMPTY for '{title}' – skipping item")
+                continue
             
             # 1. Clean data first
-            print(f"🧹 DEBUG: BEFORE regex - snippet length={len(snippet)}") # DEBUG
+            print(f"🧹 DEBUG: BEFORE regex - snippet length={len(snippet)}")
             clean_text = re.sub(r"<[^>]+>", " ", snippet)
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
-            print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")  # DEBUG
+            print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")
+            
+            # 2. Guard clause: Skip invalid data early
+            if not clean_text:
+                # Вторая линия защиты: используем сырой excerpt / content
+                raw_fallback = (excerpt or content).strip()
+                if raw_fallback:
+                    clean_text = raw_fallback
+                else:
+                    print(f"⚠️ DEBUG: clean_text is EMPTY for '{title}' – skipping item")
+                    continue
+
     
             # 2. Guard clause: Skip invalid data early
             if not clean_text:
