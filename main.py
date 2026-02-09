@@ -131,11 +131,13 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             print(f"🔍 DEBUG: Fetching full content for pageFullName='{page_full_name}'")
             
             # Правильная обработка pageFullName
+            request_url = None  # чтобы переменная всегда существовала
+            
             if page_full_name:
                 try:
                     # ШАГ 1: Удаляем .WebHome ПЕРЕД разбиением
-                    page_name_clean = re.sub(r'\.WebHome$', '', page_full_name, flags=re.IGNORECASE)
-                    
+                    page_name_clean = re.sub(r'\\.WebHome$', '', page_full_name, flags=re.IGNORECASE)
+            
                     # ШАГ 2: Разбиваем по последней точке
                     parts = page_name_clean.rsplit('.', 1)
                     if len(parts) == 2:
@@ -143,25 +145,32 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     else:
                         space_path = "xwiki"
                         page_name = page_name_clean
-                    
-                    # ШАГ 3:Собираем правильный REST URL (БЕЗ /WebHome)
-                    # Используем URL из поиска + /content для получения контента
+            
+                    # ШАГ 3: Собираем правильный REST URL (БЕЗ /WebHome)
+                    # Если в поисковой выдаче уже есть полный URL страницы — просто добираем /content
                     if url:
                         request_url = f"{url}/content"
                     else:
                         # Fallback: конструируем URL вручную
                         page_parts = page_name_clean.split('.')
+            
                         if len(page_parts) > 1:
                             spaces_path = '/'.join([quote(p, safe='') for p in page_parts[:-1]])
                             page_name = quote(page_parts[-1], safe='')
                         else:
                             spaces_path = "xwiki"
                             page_name = quote(page_parts[0], safe='')
-                            request_url = f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/spaces/{spaces_path}/pages/{page_name}/content"
-
-
+            
+                        request_url = (
+                            f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/"
+                            f"spaces/{spaces_path}/pages/{page_name}/content"
+                        )
+            
                 except Exception as e:
-                    print(f"❌ ERROR: Failed to parse URL for '{page_full_name}': {e}")
+                    print(
+                        f"❌ ERROR: Failed to parse URL for '{page_full_name}': {e}, "
+                        f"request_url={request_url}"
+                    )
                     page_html = ""
 
 
