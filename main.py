@@ -126,7 +126,6 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
         results: List[SearchResult] = []
             
         for item in data.get("searchResults", []):
-            # 1. Правильный заголовок и URL из XWiki JSON
             title = item.get("title") or item.get("pageFullName") or ""
             links = item.get("links") or []
             url = ""
@@ -134,8 +133,8 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 url = links[0].get("href") or ""
         
             print(f"📄 DEBUG: Processing item: {title}")  # DEBUG 4
-        
             page_html = ""
+
         
             # Получаем полное имя и готовим иерархический путь
             page_full_name = item.get("pageFullName", "")
@@ -215,7 +214,6 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 page_html = ""
                 
             # Fallback: если полный контент не достали — используем snippet из поиска            
-            title = item.get("pageTitle") or ""
             excerpt = item.get("excerpt") or ""
             content = item.get("content") or ""
             
