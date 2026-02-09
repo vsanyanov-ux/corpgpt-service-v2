@@ -118,6 +118,11 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             
         data = response.json()
         print(f"✅ DEBUG: Got {len(data.get('searchResults', []))} results from API")  # DEBUG 3
+
+        # ВРЕМЕННЫЙ глубокий лог всего ответа XWiki (для дебага)
+        import json
+        print(f"🧾 RAW search data: {json.dumps(data, ensure_ascii=False)[:2000]}")
+
         results: List[SearchResult] = []
             
         for item in data.get("searchResults", []):
@@ -205,13 +210,16 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 page_html = ""
                 
             # Fallback: если полный контент не достали — используем snippet из поиска            
+            title = item.get("pageTitle") or ""
             excerpt = item.get("excerpt") or ""
             content = item.get("content") or ""
-            print(f"📄 DEBUG: excerpt_len={len(excerpt)}, content_len={len(content)}")
+            
+            print(f"📄 DEBUG: excerpt_len={len(excerpt)}, content_len={len(content)}, title='{title}'")
             print(f"📄 DEBUG: raw excerpt='{excerpt[:80]}', raw content='{content[:80]}'")
             
-            snippet = page_html or excerpt or content
+            snippet = page_html or excerpt or content or title
             print(f"📦 DEBUG: final snippet length={len(snippet)}, content_preview='{snippet[:100]}'")
+
             
             # Если и после этого пусто — не рубим весь ответ, а просто скипаем этот item
             if not snippet.strip():
@@ -225,14 +233,18 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")
             
             # 2. Guard clause: Skip invalid data early
+            clean_text = re.sub(r"<[^>]+>", " ", snippet)
+            clean_text = re.sub(r"\s+", " ", clean_text).strip()
+            print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")
+            
             if not clean_text:
-                # Вторая линия защиты: используем сырой excerpt / content
-                raw_fallback = (excerpt or content).strip()
+                raw_fallback = (excerpt or content or title).strip()
                 if raw_fallback:
                     clean_text = raw_fallback
                 else:
                     print(f"⚠️ DEBUG: clean_text is EMPTY for '{title}' – skipping item")
                     continue
+
 
     
             # 2. Guard clause: Skip invalid data early
@@ -242,19 +254,23 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
     
             # 3. Specific operation block
             try:
-            # We only wrap the object creation and appending
+                # Подстрахуемся: если title пустой, используем page_full_name
+                safe_title = title or page_full_name
+            
+                # We only wrap the object creation and appending
                 new_result = SearchResult(
-                    title=title,
+                    title=safe_title,
                     url=url,
-                    excerpt=clean_text
+                    excerpt=clean_text  # здесь уже именно clean_text
                 )
                 results.append(new_result)
-                print(f"✅ DEBUG: Added result: {title}")  # DEBUG 6
+                print(f"✅ DEBUG: Added result: {safe_title}")  # DEBUG 6
             except Exception as e:
                 print(f"❌ DEBUG: Error creating result: {e}")  # DEBUG 7
-            # Logging the error helps you know WHY it failed
+                # Logging the error helps you know WHY it failed
                 print(f"Failed to process result: {e}")
                 continue
+
 
         # 4. Return results ONLY after the loop finishes
         print(f"🏁 DEBUG: Returning {len(results)} results")  # DEBUG 8
