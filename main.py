@@ -227,28 +227,24 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             
             # 1. Clean data first
             print(f"🧹 DEBUG: BEFORE regex - snippet length={len(snippet)}")
-            clean_text = re.sub(r"<[^>]+>", " ", snippet)
+            source_text = page_html or excerpt or content or title
+
+            clean_text = re.sub(r"<[^>]+>", " ", source_text)
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
+
             print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")
             
-            # 2. Guard clause: Skip invalid data early        
-            
+            # 2. Guard clause: Skip invalid data early
             if not clean_text:
                 raw_fallback = (excerpt or content or title).strip()
                 if raw_fallback:
                     clean_text = raw_fallback
                 else:
                     print(f"⚠️ DEBUG: clean_text is EMPTY for '{title}' – skipping item")
-                    continue
-
-
+                    continue   
+            
     
-            # 3. Guard clause: Skip invalid data early
-            if not clean_text:
-                print(f"⚠️ DEBUG: clean_text is EMPTY for {title}")  # DEBUG 5
-                continue
-    
-            # 4. Specific operation block
+            # 3. Specific operation block
             try:
                 # Подстрахуемся: если title пустой, используем page_full_name
                 safe_title = title or page_full_name
@@ -268,7 +264,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                 continue
 
 
-        # 5. Return results ONLY after the loop finishes
+        # 4. Return results ONLY after the loop finishes
         print(f"🏁 DEBUG: Returning {len(results)} results")  # DEBUG 8
         return results
 
