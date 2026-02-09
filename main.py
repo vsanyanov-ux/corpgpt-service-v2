@@ -130,22 +130,28 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             page_full_name = item.get('pageFullName', '')
             print(f"🔍 DEBUG: Fetching full content for pageFullName='{page_full_name}'")
             
-            # --- ЖЕСТКИЙ БЛОК ОБРАБОТКИ ---
-            import re
-            # 1. Принудительно удаляем .WebHome в любом регистре через регулярку
-            temp_name = re.sub(r'\.webhome$', '', page_full_name, flags=re.IGNORECASE)
-            
-            # 2. Разбиваем по точкам, фильтруем пустые части и кодируем каждую отдельно
-            path_parts = [quote(p.strip(), safe='') for p in temp_name.split('.') if p.strip()]
-            
-            # 3. Собираем иерархию через /pages/
-            encoded_path = "/pages/".join(path_parts)
-            # ------------------------------
-            
-            # Используй pageFullName напрямую, просто удали .WebHome
-            page_name_only = re.sub(r'\.webhome$', '', page_full_name, flags=re.IGNORECASE)
-            request_url = f"{XWIKI_BASE_URL}/rest/wikis/xwiki/spaces/{quote(page_name_only, safe='')}/pages/WebHome"
-            print(f"🔗 DEBUG: Requested URL = {request_url}")
+            # Правильная обработка pageFullName
+            if page_full_name:
+                try:
+                    # ШАГ 1: Удаляем .WebHome ПЕРЕД разбиением
+                    page_name_clean = re.sub(r'\.WebHome$', '', page_full_name, flags=re.IGNORECASE)
+                    
+                    # ШАГ 2: Разбиваем по последней точке
+                    parts = page_name_clean.rsplit('.', 1)
+                    if len(parts) == 2:
+                        space_path, page_name = parts
+                    else:
+                        space_path = "xwiki"
+                        page_name = page_name_clean
+                    
+                    # ШАГ 3: Кодируем компоненты для безопасности
+                    encoded_space = quote(space_path, safe='')
+                    encoded_page = quote(page_name, safe='')
+                    
+                    # ШАГ 4: Собираем правильный REST URL (БЕЗ /WebHome)
+                    request_url = f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/spaces/{encoded_space}/pages/{encoded_page}"
+                    print(f"🔗 DEBUG: Requested URL = {request_url}")
+
             
             try:
                 # Попытаемся получить полный контент страницы отдельным запросом
