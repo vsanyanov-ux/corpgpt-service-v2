@@ -153,22 +153,33 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                         page_name = page_name_clean
         
                     # ШАГ 3: Собираем правильный REST URL (БЕЗ /WebHome)
-                    if url:
-                        request_url = f"{url}/content"
+                    links = item.get("links") or []
+                    if links:
+                        # href уже вида:
+                        # http://.../rest/wikis/xwiki/spaces/.../pages/WebHome
+                        page_href = links[0].get("href") or ""
+                        # Просто добавляем /content
+                        request_url = f"{page_href}/content"
                     else:
+                        # Fallback, если вдруг links нет
                         page_parts = page_name_clean.split('.')
-        
+                    
                         if len(page_parts) > 1:
-                            spaces_path = '/'.join([quote(p, safe='') for p in page_parts[:-1]])
-                            page_name = quote(page_parts[-1], safe='')
+                            encoded = [quote(p, safe='') for p in page_parts]
+                            # превращаем в spaces/A/spaces/B/spaces/C
+                            spaces_segment = ""
+                            for p in encoded[:-1]:
+                                spaces_segment += f"spaces/{p}/"
+                            page_name = encoded[-1]
                         else:
-                            spaces_path = "xwiki"
+                            spaces_segment = ""
                             page_name = quote(page_parts[0], safe='')
-        
+                    
                         request_url = (
                             f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/"
-                            f"spaces/{spaces_path}/pages/{page_name}/content"
+                            f"{spaces_segment}pages/{page_name}/content"
                         )
+
         
                 except Exception as e:
                     print(
@@ -176,8 +187,6 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                         f"request_url={request_url}"
                     )
                     page_html = ""
-
-
 
             
             try:
