@@ -189,6 +189,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             
             try:
                 # Попытаемся получить полный контент страницы отдельным запросом
+                print(f"🌐 DEBUG: request_url='{request_url}'")
                 page_resp = await client.get(
                     request_url,
                     auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
