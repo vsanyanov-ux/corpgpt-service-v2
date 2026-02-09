@@ -144,20 +144,22 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                         space_path = "xwiki"
                         page_name = page_name_clean
                     
-                    # ШАГ 3: Кодируем компоненты для безопасности
-                    encoded_space = quote(space_path, safe='')
-                    encoded_page = quote(page_name, safe='')
-                    
-                    # ШАГ 4: Собираем правильный REST URL (БЕЗ /WebHome)
+                    # ШАГ 3:Собираем правильный REST URL (БЕЗ /WebHome)
                     # Используем URL из поиска + /content для получения контента
                     if url:
                         request_url = f"{url}/content"
                     else:
                         # Fallback: конструируем URL вручную
                         page_parts = page_name_clean.split('.')
-                        spaces_path = '/'.join([quote(p, safe='') for p in page_parts[:-1]])
-                        page_name = quote(page_parts[-1], safe='')
-                        request_url = f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/spaces/{spaces_path}/pages/{page_name}/content"
+                        if len(page_parts) > 1:
+                            spaces_path = '/'.join([quote(p, safe='') for p in page_parts[:-1]])
+                            page_name = quote(page_parts[-1], safe='')
+                        else:
+                            spaces_path = "xwiki"
+                            page_name = quote(page_parts[0], safe='')
+                            request_url = f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/spaces/{spaces_path}/pages/{page_name}/content"
+
+
                 except Exception as e:
                     print(f"❌ ERROR: Failed to parse URL for '{page_full_name}': {e}")
                     page_html = ""
