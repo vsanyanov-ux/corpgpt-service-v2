@@ -203,11 +203,15 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     except Exception as e:
                         print(f"Error parsing XML: {e}")
                         page_html = ""
+                    
+                    # Логируем ответ и длину независимо от успеха парсинга
                     print(f"📄 DEBUG: RAW page_resp='{page_resp.text[:500]}'")
                     print(f"📄 DEBUG: page_html_len={len(page_html)}")
 
                 else:
                     page_html = ""
+                    print(f"📄 DEBUG: RAW page_resp='{page_resp.text[:500]}'")
+                    print(f"📄 DEBUG: page_html_len={len(page_html)}")
             except Exception as e:
                 print(f"❌ ERROR: Failed to fetch page content for '{page_full_name}': {e}")
                 page_html = ""
