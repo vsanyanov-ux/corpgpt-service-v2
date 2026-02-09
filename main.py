@@ -153,27 +153,25 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                         page_name = page_name_clean
         
                     # ШАГ 3: Собираем правильный REST URL (БЕЗ /WebHome)
+
                     links = item.get("links") or []
+                    page_href = ""
                     if links:
-                        # href уже вида:
-                        # http://.../rest/wikis/xwiki/spaces/.../pages/WebHome
                         page_href = links[0].get("href") or ""
-                        # Просто добавляем /content
+                    
+                    if page_href:
+                        # href уже в правильном формате:
+                        # http://.../rest/wikis/xwiki/spaces/.../pages/WebHome
                         request_url = f"{page_href}/content"
                     else:
-                        # Fallback, если вдруг links нет
+                        # Fallback только на всякий случай, если links нет
                         page_parts = page_name_clean.split('.')
+                        encoded = [quote(p, safe='') for p in page_parts]
                     
-                        if len(page_parts) > 1:
-                            encoded = [quote(p, safe='') for p in page_parts]
-                            # превращаем в spaces/A/spaces/B/spaces/C
-                            spaces_segment = ""
-                            for p in encoded[:-1]:
-                                spaces_segment += f"spaces/{p}/"
-                            page_name = encoded[-1]
-                        else:
-                            spaces_segment = ""
-                            page_name = quote(page_parts[0], safe='')
+                        spaces_segment = ""
+                        for p in encoded[:-1]:
+                            spaces_segment += f"spaces/{p}/"
+                        page_name = encoded[-1]
                     
                         request_url = (
                             f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/"
