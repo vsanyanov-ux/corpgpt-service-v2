@@ -329,6 +329,8 @@ async def retrieval(request: RetrievalRequest):
     records = []
     
     for result in results:
+        text = result.excerpt
+        print(f"🧪 DEBUG RAW CONTENT (first 300): {text[:300]}")
         records.append({
             "metadata": {
                 "path": result.url,
@@ -336,7 +338,8 @@ async def retrieval(request: RetrievalRequest):
             },
             "score": 1.0,
             "title": result.title,
-            "content": result.excerpt
+            "content": text
         })
+
     
     return {"records": records}
