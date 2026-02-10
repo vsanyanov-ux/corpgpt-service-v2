@@ -330,7 +330,7 @@ async def retrieval(request: RetrievalRequest):
     
     for result in results:
         text = result.excerpt
-        print(f"🧪 DEBUG RAW CONTENT (first 300): {text[:300]}")
+        print(f"🧪 DEBUG RAW CONTENT (len={len(text)}): {text}")
         records.append({
             "metadata": {
                 "path": result.url,
