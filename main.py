@@ -131,98 +131,105 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             print(f"📄 DEBUG: Processing item: {title}")  # DEBUG 4
             page_html = ""
 
+            # 1. Строим рабочий bin/view URL
+            view_url = ""
+            hierarchy = (item.get("hierarchy") or {}).get("items") or []
+            if hierarchy:
+                # Обычно последний элемент — документ с корректным bin/view URL
+                view_url = hierarchy[-1].get("url") or ""
+            
+            # Fallback: конструируем из space и pageName, если в hierarchy нет url
+            if not view_url:
+                space_path = item.get("space", "")  # "Оборудование.FAQ.Как проверить статус крана?"
+                page_name = item.get("pageName", "WebHome")
+                # space_path в bin/view — через /
+                space_path_slash = "/".join(space_path.split(".")) if space_path else ""
+                if space_path_slash:
+                    view_url = f"{XWIKI_BASE_URL}/bin/view/{space_path_slash}/"
+                else:
+                    view_url = f"{XWIKI_BASE_URL}/bin/view/{page_name}"
+
+
+            # 2. Тянем HTML и чистим его
+            if view_url:
+                try:
+                    print(f"🌐 DEBUG: view_url='{view_url}'")
+                    page_resp = await client.get(
+                        view_url,
+                        auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
+                        follow_redirects=True
+                    )
+                    if page_resp.status_code == 200:
+                        html = page_resp.text
+                        # Грубая очистка HTML → простой текст
+                        page_html = re.sub(r"<[^>]+>", " ", html)
+                        page_html = re.sub(r"\\s+", " ", page_html).strip()
+                        print(f"📄 DEBUG: view_html_len={len(page_html)}")
+                    else:
+                        print(f"❌ DEBUG: view_url status={page_resp.status_code}")
+                        page_html = ""
+                except Exception as e:
+                    print(f"❌ ERROR: Failed to fetch view_url '{view_url}': {e}")
+                    page_html = ""
+            else:
+                print("⚠️ DEBUG: view_url is empty, skip HTML fetch")
+
         
             # Получаем полное имя и готовим иерархический путь
-            page_full_name = item.get("pageFullName", "")
-            print(f"🔍 DEBUG: Fetching full content for pageFullName='{page_full_name}'")
+            #page_full_name = item.get("pageFullName", "")
+            #print(f"🔍 DEBUG: Fetching full content for pageFullName='{page_full_name}'")
         
             # Правильная обработка pageFullName
-            request_url = None  # чтобы переменная всегда существовала
+            #request_url = None  # чтобы переменная всегда существовала
         
-            if page_full_name:
-                try:
+            #if page_full_name:
+            #    try:
                     # ШАГ 1: Удаляем .WebHome ПЕРЕД разбиением
-                    page_name_clean = re.sub(r'\.WebHome$', '', page_full_name, flags=re.IGNORECASE)
+            #        page_name_clean = re.sub(r'\.WebHome$', '', page_full_name, flags=re.IGNORECASE)
         
                     # ШАГ 2: Разбиваем по последней точке
-                    parts = page_name_clean.rsplit('.', 1)
-                    if len(parts) == 2:
-                        space_path, page_name = parts
-                    else:
-                        space_path = "xwiki"
-                        page_name = page_name_clean
+            #        parts = page_name_clean.rsplit('.', 1)
+            #        if len(parts) == 2:
+            #            space_path, page_name = parts
+            #        else:
+            #            space_path = "xwiki"
+            #           page_name = page_name_clean
         
                     # ШАГ 3: Собираем правильный REST URL (БЕЗ /WebHome)
 
-                    links = item.get("links") or []
-                    page_href = ""
-                    if links:
-                        page_href = links[0].get("href") or ""
+            #        links = item.get("links") or []
+            #       page_href = ""
+            #       if links:
+            #           page_href = links[0].get("href") or ""
                     
-                    if page_href:
+            #        if page_href:
                         # href уже в правильном формате:
                         # http://.../rest/wikis/xwiki/spaces/.../pages/WebHome
-                        request_url = f"{page_href}/content"
-                    else:
+            #           request_url = f"{page_href}/content"
+            #        else:
                         # Fallback только на всякий случай, если links нет
-                        page_parts = page_name_clean.split('.')
-                        encoded = [quote(p, safe='') for p in page_parts]
+            #            page_parts = page_name_clean.split('.')
+            #            encoded = [quote(p, safe='') for p in page_parts]
                     
-                        spaces_segment = ""
-                        for p in encoded[:-1]:
-                            spaces_segment += f"spaces/{p}/"
-                        page_name = encoded[-1]
+            #            spaces_segment = ""
+            #            for p in encoded[:-1]:
+            #                spaces_segment += f"spaces/{p}/"
+            #            page_name = encoded[-1]
                     
-                        request_url = (
-                            f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/"
-                            f"{spaces_segment}pages/{page_name}/content"
-                        )
+            #            request_url = (
+            #                f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/"
+            #                f"{spaces_segment}pages/{page_name}/content"
+            #            )
 
         
-                except Exception as e:
-                    print(
-                        f"❌ ERROR: Failed to parse URL for '{page_full_name}': {e}, "
-                        f"request_url={request_url}"
-                    )
-                    page_html = ""
+            #    except Exception as e:
+            #        print(
+            #            f"❌ ERROR: Failed to parse URL for '{page_full_name}': {e}, "
+            #            f"request_url={request_url}"
+            #        )
+            #        page_html = ""
 
             
-            try:
-                # Попытаемся получить полный контент страницы отдельным запросом
-                print(f"🌐 DEBUG: request_url='{request_url}'")
-                page_resp = await client.get(
-                    request_url,
-                    auth=(XWIKI_USERNAME, XWIKI_PASSWORD),
-                    follow_redirects=True
-                )
-                
-                if page_resp.status_code == 200:
-                    try:
-                        root = ET.fromstring(page_resp.text)
-                        # Найти content элемент с namespace
-                        ns = {'xwiki': 'http://www.xwiki.org'}
-                        content_elem = root.find('.//xwiki:content', ns)
-                        
-                        if content_elem is not None and content_elem.text:
-                            page_html = content_elem.text
-                            # Очистить от XML тегов
-                            page_html = re.sub(r'<[^>]+>', ' ', page_html)
-                            page_html = re.sub(r'\s+', ' ', page_html).strip()                        
-                    except Exception as e:
-                        print(f"Error parsing XML: {e}")
-                        page_html = ""
-                    
-                    # Логируем ответ и длину независимо от успеха парсинга
-                    print(f"📄 DEBUG: RAW page_resp='{page_resp.text[:500]}'")
-                    print(f"📄 DEBUG: page_html_len={len(page_html)}")
-
-                else:
-                    page_html = ""
-                    print(f"📄 DEBUG: RAW page_resp='{page_resp.text[:500]}'")
-                    print(f"📄 DEBUG: page_html_len={len(page_html)}")
-            except Exception as e:
-                print(f"❌ ERROR: Failed to fetch page content for '{page_full_name}': {e}")
-                page_html = ""
                 
             # Fallback: если полный контент не достали — используем snippet из поиска            
             excerpt = item.get("excerpt") or ""
@@ -246,7 +253,6 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
 
             clean_text = re.sub(r"<[^>]+>", " ", source_text)
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
-
             print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")
             
             # 2. Guard clause: Skip invalid data early
