@@ -161,10 +161,20 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     )
                     if page_resp.status_code == 200:
                         html = page_resp.text
-                        # Грубая очистка HTML → простой текст
-                        page_html = re.sub(r"<[^>]+>", " ", html)
+
+                        # 1) Пытаемся вырезать основной контент XWiki (между <!--XWikiContent--> и <!--XWikiEndContent-->)
+                        match = re.search(r"<!--XWikiContent-->(.*)<!--XWikiEndContent-->", html, re.DOTALL)
+                        if match:
+                            main_html = match.group(1)
+                        else:
+                            # если маркеров нет, используем весь html как сейчас
+                            main_html = html
+                        
+                        # 2) Грубая очистка HTML → простой текст
+                        page_html = re.sub(r"<[^>]+>", " ", main_html)
                         page_html = re.sub(r"\\s+", " ", page_html).strip()
                         print(f"📄 DEBUG: view_html_len={len(page_html)}")
+
                     else:
                         print(f"❌ DEBUG: view_url status={page_resp.status_code}")
                         page_html = ""
@@ -254,6 +264,11 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
             clean_text = re.sub(r"<[^>]+>", " ", source_text)
             clean_text = re.sub(r"\s+", " ", clean_text).strip()
             print(f"🧹 DEBUG: AFTER regex - clean_text length={len(clean_text)}")
+            
+            MAX_LEN = 10000  # например
+            if len(clean_text) > MAX_LEN:
+                clean_text = clean_text[:MAX_LEN]
+
             
             # 2. Guard clause: Skip invalid data early
             if not clean_text:
