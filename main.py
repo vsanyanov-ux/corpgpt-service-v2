@@ -199,7 +199,23 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                             idx = page_html.find(marker)
                             if idx != -1:
                                 page_html = page_html[:idx].strip()
-                                break        
+                                break 
+
+                        # 5) Дополнительная фильтрация: оставляем строки с осмысленным текстом
+                        sentences = []
+                        for part in page_html.split("."):
+                            s = part.strip()
+                            # отбрасываем слишком короткие и «технические» куски
+                            if len(s) < 10:
+                                continue
+                            # игнорируем строки без кириллицы (меню/английский UI)
+                            if not re.search(r"[А-Яа-я]", s):
+                                continue
+                            sentences.append(s)
+                        
+                        if sentences:
+                            page_html = ". ".join(sentences).strip()
+
 
 
                     else:
