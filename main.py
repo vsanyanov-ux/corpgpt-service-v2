@@ -162,18 +162,45 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     if page_resp.status_code == 200:
                         html = page_resp.text
 
-                        # 1) Пытаемся вырезать основной контент XWiki (между <!--XWikiContent--> и <!--XWikiEndContent-->)
+                        # 1) Сначала пробуем вырезать блок между <!--XWikiContent--> ... <!--XWikiEndContent-->
                         match = re.search(r"<!--XWikiContent-->(.*)<!--XWikiEndContent-->", html, re.DOTALL)
                         if match:
                             main_html = match.group(1)
                         else:
-                            # если маркеров нет, используем весь html как сейчас
                             main_html = html
                         
-                        # 2) Грубая очистка HTML → простой текст
-                        page_html = re.sub(r"<[^>]+>", " ", main_html)
+                        # 2) Внутри main_html пытаемся найти div с основным содержимым
+                        content_match = re.search(
+                            r'<div[^>]+class="[^"]*(xwikidoccontent|xwiki-content|contentinner)[^"]*"[^>]*>(.*)</div>',
+                            main_html,
+                            re.DOTALL | re.IGNORECASE
+                        )
+                        if content_match:
+                            article_html = content_match.group(2)
+                        else:
+                            # если не нашли – хотя бы отрежем шапку и подвал по первому и последнему <p>
+                            p_match = re.search(r"<p[^>]*>.*</p>", main_html, re.DOTALL | re.IGNORECASE)
+                            if p_match:
+                                article_html = p_match.group(0)
+                            else:
+                                article_html = main_html
+                        
+                        # 3) Грубая очистка HTML → простой текст
+                        page_html = re.sub(r"<[^>]+>", " ", article_html)
                         page_html = re.sub(r"\\s+", " ", page_html).strip()
                         print(f"📄 DEBUG: view_html_len={len(page_html)}")
+                        
+                        # 4) Обрезаем типичные хвосты интерфейса, если они есть
+                        cut_markers = [
+                            "Комментарии (", "Annotations (", "History ", "Attachments (",
+                            "Export Choose the export format", "Toggle the left panel column"
+                        ]
+                        for marker in cut_markers:
+                            idx = page_html.find(marker)
+                            if idx != -1:
+                                page_html = page_html[:idx].strip()
+                                break        
+
 
                     else:
                         print(f"❌ DEBUG: view_url status={page_resp.status_code}")
@@ -182,62 +209,7 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
                     print(f"❌ ERROR: Failed to fetch view_url '{view_url}': {e}")
                     page_html = ""
             else:
-                print("⚠️ DEBUG: view_url is empty, skip HTML fetch")
-
-        
-            # Получаем полное имя и готовим иерархический путь
-            #page_full_name = item.get("pageFullName", "")
-            #print(f"🔍 DEBUG: Fetching full content for pageFullName='{page_full_name}'")
-        
-            # Правильная обработка pageFullName
-            #request_url = None  # чтобы переменная всегда существовала
-        
-            #if page_full_name:
-            #    try:
-                    # ШАГ 1: Удаляем .WebHome ПЕРЕД разбиением
-            #        page_name_clean = re.sub(r'\.WebHome$', '', page_full_name, flags=re.IGNORECASE)
-        
-                    # ШАГ 2: Разбиваем по последней точке
-            #        parts = page_name_clean.rsplit('.', 1)
-            #        if len(parts) == 2:
-            #            space_path, page_name = parts
-            #        else:
-            #            space_path = "xwiki"
-            #           page_name = page_name_clean
-        
-                    # ШАГ 3: Собираем правильный REST URL (БЕЗ /WebHome)
-
-            #        links = item.get("links") or []
-            #       page_href = ""
-            #       if links:
-            #           page_href = links[0].get("href") or ""
-                    
-            #        if page_href:
-                        # href уже в правильном формате:
-                        # http://.../rest/wikis/xwiki/spaces/.../pages/WebHome
-            #           request_url = f"{page_href}/content"
-            #        else:
-                        # Fallback только на всякий случай, если links нет
-            #            page_parts = page_name_clean.split('.')
-            #            encoded = [quote(p, safe='') for p in page_parts]
-                    
-            #            spaces_segment = ""
-            #            for p in encoded[:-1]:
-            #                spaces_segment += f"spaces/{p}/"
-            #            page_name = encoded[-1]
-                    
-            #            request_url = (
-            #                f"{XWIKI_BASE_URL}/xwiki/rest/wikis/xwiki/"
-            #                f"{spaces_segment}pages/{page_name}/content"
-            #            )
-
-        
-            #    except Exception as e:
-            #        print(
-            #            f"❌ ERROR: Failed to parse URL for '{page_full_name}': {e}, "
-            #            f"request_url={request_url}"
-            #        )
-            #        page_html = ""
+                print("⚠️ DEBUG: view_url is empty, skip HTML fetch")   
 
             
                 
