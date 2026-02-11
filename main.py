@@ -347,8 +347,8 @@ async def health():
 async def retrieval(request: RetrievalRequest):
     """CorpGPT External Knowledge endpoint"""
 
-    # 1) Новый режим: готовые чанки из XWiki FAQ экспортёра
-    if request.knowledge_id == "xwiki_faq":
+    # XWIKI: берём готовый JSON-экспорт и режем на чанки
+    if request.knowledge_id == "xwiki":
         pages = fetch_xwiki_export()
         records = []
 
@@ -373,14 +373,8 @@ async def retrieval(request: RetrievalRequest):
 
         return {"records": records}
 
-    # 2) Старый режим: поиск по XWiki REST
-    if request.knowledge_id == "xwiki":
-        results = await search_xwiki(
-            request.query,
-            limit=request.retrieval_setting.top_k,
-            offset=0
-        )
-    elif request.knowledge_id == "confluence":
+    # Остальные — как раньше
+    if request.knowledge_id == "confluence":
         results = await search_confluence(
             request.query,
             limit=request.retrieval_setting.top_k,
@@ -408,3 +402,4 @@ async def retrieval(request: RetrievalRequest):
         })
 
     return {"records": records}
+
