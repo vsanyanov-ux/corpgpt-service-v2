@@ -64,6 +64,11 @@ def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
     return chunks
 
 import json
+import logging
+import requests
+from json.decoder import JSONDecodeError
+
+logger = logging.getLogger(__name__)
 
 def fetch_xwiki_export() -> list[dict]:
     if not XWIKI_EXPORT_URL:
@@ -77,19 +82,9 @@ def fetch_xwiki_export() -> list[dict]:
     text = resp.text
     print("XWIKI_EXPORT raw first 200:", repr(text[:200]))
 
-    # Мягкая чистка control-char'ов
-    cleaned = []
-    for ch in text:
-        code = ord(ch)
-        if code < 32 and ch not in ("\n", "\r", "\t"):
-            continue
-        cleaned.append(ch)
-    text = "".join(cleaned)
-
-    # Парсим как список, но с защитой на уровне элементов
     try:
-        raw_pages = json.loads(text)
-    except Exception as e:
+        raw_pages = json.loads(text)  # без ручной чистки
+    except JSONDecodeError as e:
         print("XWIKI_EXPORT: full JSON parse error:", e)
         return []
 
@@ -98,10 +93,6 @@ def fetch_xwiki_export() -> list[dict]:
         try:
             if not isinstance(p, dict):
                 continue
-            # Чистим потенциально проблемные строки
-            for key in ("id", "space", "title"):
-                if key in p and isinstance(p[key], str):
-                    p[key] = p[key].replace("\r", " ").replace("\n", " ").strip()
             pages.append(p)
         except Exception as e:
             print(f"XWIKI_EXPORT: skip bad item #{idx}: {e}")
@@ -109,7 +100,6 @@ def fetch_xwiki_export() -> list[dict]:
 
     print(f"XWIKI_EXPORT: parsed {len(pages)} pages (from {len(raw_pages)})")
     return pages
-
 
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
