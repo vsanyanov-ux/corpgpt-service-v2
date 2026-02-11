@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import httpx
 import os
 import re
+import requests
 import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict
 from urllib.parse import quote
@@ -17,6 +18,11 @@ Confluence_PASSWORD = os.getenv("CONFLUENCE_API_TOKEN", "")
 XWIKI_BASE_URL = os.getenv("XWIKI_BASE_URL", "")
 XWIKI_USERNAME = os.getenv("XWIKI_USERNAME", "")
 XWIKI_PASSWORD = os.getenv("XWIKI_PASSWORD", "")
+
+XWIKI_EXPORT_URL = os.getenv(
+    "XWIKI_EXPORT_URL",
+    "http://158.255.1.153:8080/bin/view/Tech/CorpGPTExport/?outputSyntax=plain&xpage=plain"
+)
 
 print(f"DEBUG: Confluence_BASE_URL = {Confluence_BASE_URL}")
 
@@ -34,6 +40,39 @@ class SearchResult(BaseModel):
     title: str
     url: str
     excerpt: str
+
+# ===== XWiki FAQ export (CorpGPT) =====
+
+MAX_CHARS = 1200  # размер чанка, потом подберём
+
+def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
+    text = (text or "").strip()
+    if not text:
+        return []
+    chunks = []
+    start = 0
+    n = len(text)
+    while start < n:
+        end = min(start + max_chars, n)
+        cut = text.rfind("\n", start, end)
+        if cut == -1:
+            cut = text.rfind(". ", start, end)
+        if cut == -1 or cut <= start + max_chars * 0.5:
+            cut = end
+        chunks.append(text[start:cut].strip())
+        start = cut
+    return chunks
+
+def fetch_xwiki_export() -> list[dict]:
+    """Синхронный fetch JSON-экспортёра FAQ из XWiki."""
+    if not XWIKI_EXPORT_URL:
+        return []
+    resp = requests.get(XWIKI_EXPORT_URL, timeout=10)
+    resp.raise_for_status()
+    pages = resp.json()
+    print(f"XWIKI_EXPORT: got {len(pages)} pages")
+    return pages
+
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
     """Search Confluence with pagination"""
@@ -307,6 +346,34 @@ async def health():
 @app.post("/retrieval")
 async def retrieval(request: RetrievalRequest):
     """CorpGPT External Knowledge endpoint"""
+
+    # 1) Новый режим: готовые чанки из XWiki FAQ экспортёра
+    if request.knowledge_id == "xwiki_faq":
+        pages = fetch_xwiki_export()
+        records = []
+
+        for page in pages:
+            base_meta = {
+                "path": page.get("url", ""),
+                "description": page.get("title", ""),
+                "space": page.get("space", ""),
+                "name": page.get("name", ""),
+                "updated": page.get("updated"),
+            }
+            for i, chunk in enumerate(chunk_text(page.get("content", ""))):
+                records.append({
+                    "metadata": {
+                        **base_meta,
+                        "chunk_index": i,
+                    },
+                    "score": 1.0,
+                    "title": page.get("title", ""),
+                    "content": chunk,
+                })
+
+        return {"records": records}
+
+    # 2) Старый режим: поиск по XWiki REST
     if request.knowledge_id == "xwiki":
         results = await search_xwiki(
             request.query,
@@ -325,9 +392,8 @@ async def retrieval(request: RetrievalRequest):
             limit=request.retrieval_setting.top_k,
             offset=0
         )
-    
+
     records = []
-    
     for result in results:
         text = result.excerpt
         print(f"🧪 DEBUG RAW CONTENT (len={len(text)}): {text}")
@@ -341,5 +407,4 @@ async def retrieval(request: RetrievalRequest):
             "content": text
         })
 
-    
     return {"records": records}
