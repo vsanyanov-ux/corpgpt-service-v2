@@ -75,7 +75,6 @@ def fetch_xwiki_export() -> list[dict]:
         return []
 
     auth = (XWIKI_USERNAME, XWIKI_PASSWORD) if XWIKI_USERNAME and XWIKI_PASSWORD else None
-
     resp = requests.get(XWIKI_EXPORT_URL, timeout=10, auth=auth)
     resp.raise_for_status()
 
@@ -83,23 +82,20 @@ def fetch_xwiki_export() -> list[dict]:
     print("XWIKI_EXPORT raw first 200:", repr(text[:200]))
 
     try:
-        raw_pages = json.loads(text)  # без ручной чистки
+        # ТОЛЬКО для отладки strict=False
+        raw_pages = json.loads(text, strict=False)
     except JSONDecodeError as e:
         print("XWIKI_EXPORT: full JSON parse error:", e)
         return []
 
-    pages: list[dict] = []
-    for idx, p in enumerate(raw_pages):
-        try:
-            if not isinstance(p, dict):
-                continue
-            pages.append(p)
-        except Exception as e:
-            print(f"XWIKI_EXPORT: skip bad item #{idx}: {e}")
-            continue
+    print(f"XWIKI_EXPORT: total pages = {len(raw_pages)}")
+    if raw_pages:
+        # покажем пару первых и последних для ориентира
+        print("XWIKI_EXPORT sample page[0]:", repr(raw_pages[0])[:400])
+        if len(raw_pages) > 1:
+            print("XWIKI_EXPORT sample page[-1]:", repr(raw_pages[-1])[:400])
 
-    print(f"XWIKI_EXPORT: parsed {len(pages)} pages (from {len(raw_pages)})")
-    return pages
+    return raw_pages
 
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
