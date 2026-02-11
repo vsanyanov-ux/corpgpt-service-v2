@@ -82,13 +82,21 @@ def fetch_xwiki_export() -> list[dict]:
     print("XWIKI_EXPORT raw first 200:", repr(text[:200]))
 
     try:
-        raw_pages = json.loads(text)  # без strict=False
+        # сначала строгий парсер
+        raw_pages = json.loads(text)
     except JSONDecodeError as e:
-        print("XWIKI_EXPORT: full JSON parse error:", e)
-        return []
+        print("XWIKI_EXPORT: strict JSON parse error:", e)
+        # fallback — менее строгий режим
+        try:
+            raw_pages = json.loads(text, strict=False)
+            print("XWIKI_EXPORT: parsed with strict=False fallback")
+        except JSONDecodeError as e2:
+            print("XWIKI_EXPORT: fallback JSON parse error:", e2)
+            return []
 
     print(f"XWIKI_EXPORT: total pages = {len(raw_pages)}")
     return raw_pages
+
 
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
