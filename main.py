@@ -82,19 +82,12 @@ def fetch_xwiki_export() -> list[dict]:
     print("XWIKI_EXPORT raw first 200:", repr(text[:200]))
 
     try:
-        # ТОЛЬКО для отладки strict=False
-        raw_pages = json.loads(text, strict=False)
+        raw_pages = json.loads(text)  # без strict=False
     except JSONDecodeError as e:
         print("XWIKI_EXPORT: full JSON parse error:", e)
         return []
 
     print(f"XWIKI_EXPORT: total pages = {len(raw_pages)}")
-    if raw_pages:
-        # покажем пару первых и последних для ориентира
-        print("XWIKI_EXPORT sample page[0]:", repr(raw_pages[0])[:400])
-        if len(raw_pages) > 1:
-            print("XWIKI_EXPORT sample page[-1]:", repr(raw_pages[-1])[:400])
-
     return raw_pages
 
 
