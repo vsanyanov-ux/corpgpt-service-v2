@@ -77,36 +77,10 @@ def fetch_xwiki_export() -> list[dict]:
     resp = requests.get(XWIKI_EXPORT_URL, timeout=10, auth=auth)
     resp.raise_for_status()
 
-    raw = resp.text
-    print("XWIKI_EXPORT raw first 200:", repr(raw[:200]))
-
-    # 1) вырезаем первый JSON-массив в ответе
-    m = re.search(r"\[\s*{", raw)
-    if not m:
-        print("XWIKI_EXPORT: no JSON array found")
-        return []
-
-    start = m.start()
-    # ищем конец массива по последней закрывающей скобке
-    end = raw.rfind("]")
-    if end == -1:
-        end = len(raw)
-
-    json_str = raw[start:end+1]
-
-    # 2) убираем «грязные» управляющие символы, кроме стандартных \n\r\t
-    json_str = "".join(
-        ch for ch in json_str
-        if ch >= " " or ch in "\n\r\t"
-    )
-
-    try:
-        pages = json.loads(json_str)
-        print(f"XWIKI_EXPORT: parsed {len(pages)} pages")
-        return pages
-    except Exception as e:
-        print("XWIKI_EXPORT JSON parse error:", e)
-        return []
+    # тут без всякой магии
+    pages = resp.json()
+    print(f"XWIKI_EXPORT: got {len(pages)} pages")
+    return pages
 
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
