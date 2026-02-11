@@ -64,15 +64,12 @@ def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
     return chunks
 
 import json
-import string
 
 def fetch_xwiki_export() -> list[dict]:
     if not XWIKI_EXPORT_URL:
         return []
 
-    auth = None
-    if XWIKI_USERNAME and XWIKI_PASSWORD:
-        auth = (XWIKI_USERNAME, XWIKI_PASSWORD)
+    auth = (XWIKI_USERNAME, XWIKI_PASSWORD) if XWIKI_USERNAME and XWIKI_PASSWORD else None
 
     resp = requests.get(XWIKI_EXPORT_URL, timeout=10, auth=auth)
     resp.raise_for_status()
@@ -80,29 +77,39 @@ def fetch_xwiki_export() -> list[dict]:
     text = resp.text
     print("XWIKI_EXPORT raw first 200:", repr(text[:200]))
 
-    # 1. Пробуем обычный json()
+    # Мягкая чистка control-char'ов
+    cleaned = []
+    for ch in text:
+        code = ord(ch)
+        if code < 32 and ch not in ("\n", "\r", "\t"):
+            continue
+        cleaned.append(ch)
+    text = "".join(cleaned)
+
+    # Парсим как список, но с защитой на уровне элементов
     try:
-        pages = resp.json()
-    except requests.exceptions.JSONDecodeError:
-        import json
-        # мягко чистим только запрещённые управляющие символы
-        cleaned = []
-        for ch in text:
-            code = ord(ch)
-            if code < 32 and ch not in ("\n", "\r", "\t"):
+        raw_pages = json.loads(text)
+    except Exception as e:
+        print("XWIKI_EXPORT: full JSON parse error:", e)
+        return []
+
+    pages: list[dict] = []
+    for idx, p in enumerate(raw_pages):
+        try:
+            if not isinstance(p, dict):
                 continue
-            cleaned.append(ch)
-        text = "".join(cleaned)
-        pages = json.loads(text)
+            # Чистим потенциально проблемные строки
+            for key in ("id", "space", "title"):
+                if key in p and isinstance(p[key], str):
+                    p[key] = p[key].replace("\r", " ").replace("\n", " ").strip()
+            pages.append(p)
+        except Exception as e:
+            print(f"XWIKI_EXPORT: skip bad item #{idx}: {e}")
+            continue
 
-    # 2. Подстраховка: чистим проблемные поля в каждом объекте
-    for p in pages:
-        for key in ("id", "space", "title"):
-            if key in p and isinstance(p[key], str):
-                p[key] = p[key].replace("\r", " ").replace("\n", " ").strip()
-
-    print(f"XWIKI_EXPORT: parsed {len(pages)} pages")
+    print(f"XWIKI_EXPORT: parsed {len(pages)} pages (from {len(raw_pages)})")
     return pages
+
 
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
