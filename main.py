@@ -64,10 +64,13 @@ def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
     return chunks
 
 def fetch_xwiki_export() -> list[dict]:
-    """Синхронный fetch JSON-экспортёра FAQ из XWiki."""
     if not XWIKI_EXPORT_URL:
         return []
-    resp = requests.get(XWIKI_EXPORT_URL, timeout=10)
+    auth = None
+    if XWIKI_USERNAME and XWIKI_PASSWORD:
+        auth = (XWIKI_USERNAME, XWIKI_PASSWORD)
+
+    resp = requests.get(XWIKI_EXPORT_URL, timeout=10, auth=auth)
     resp.raise_for_status()
     pages = resp.json()
     print(f"XWIKI_EXPORT: got {len(pages)} pages")
