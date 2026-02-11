@@ -77,8 +77,31 @@ def fetch_xwiki_export() -> list[dict]:
     resp = requests.get(XWIKI_EXPORT_URL, timeout=10, auth=auth)
     resp.raise_for_status()
 
-    pages = resp.json()
-    print(f"XWIKI_EXPORT: got {len(pages)} pages")
+    text = resp.text
+    print("XWIKI_EXPORT raw first 200:", repr(text[:200]))
+
+    # 1. Пробуем обычный json()
+    try:
+        pages = resp.json()
+    except requests.exceptions.JSONDecodeError:
+        import json
+        # мягко чистим только запрещённые управляющие символы
+        cleaned = []
+        for ch in text:
+            code = ord(ch)
+            if code < 32 and ch not in ("\n", "\r", "\t"):
+                continue
+            cleaned.append(ch)
+        text = "".join(cleaned)
+        pages = json.loads(text)
+
+    # 2. Подстраховка: чистим проблемные поля в каждом объекте
+    for p in pages:
+        for key in ("id", "space", "title"):
+            if key in p and isinstance(p[key], str):
+                p[key] = p[key].replace("\r", " ").replace("\n", " ").strip()
+
+    print(f"XWIKI_EXPORT: parsed {len(pages)} pages")
     return pages
 
 
