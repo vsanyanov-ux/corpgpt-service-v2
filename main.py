@@ -497,49 +497,80 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
+# Модели CorpGPT-запроса/ответа уже есть у тебя выше:
+# class RetrievalSettings(BaseModel):
+#     top_k: int = 5
+#     score_threshold: float = 0.5
+#
+# class RetrievalRequest(BaseModel):
+#     knowledge_id: str
+#     query: str
+#     retrieval_setting: RetrievalSettings = RetrievalSettings()
+
 @app.post("/retrieval")
 async def retrieval(request: RetrievalRequest):
-    if request.knowledge_id == "xwiki":
-        pages = fetch_xwiki_export()
-        query = (request.query or "").strip().lower()
+    """
+    CorpGPT → внешний источник.
+    Теперь внутри используем семантический RAG вместо простого substring-поиска.
+    """
+    # Пока работаем только с xwiki
+    if request.knowledge_id != "xwiki":
+        return {"records": []}
+
+    query = (request.query or "").strip()
+    if not query or len(query) < 2:
+        return {"records": []}
+
+    top_k = getattr(request.retrieval_setting, "top_k", None) or 5
+
+    try:
+        # 1. Делаем семантический поиск через RAG
+        rag_result = rag_service.retrieve(query, k=top_k)
+
+        # rag_result ожидается в формате:
+        # {
+        #   "prompt": "...",
+        #   "sources": [
+        #       {"page": "...", "url": "...", "content": "...", "space": "...", "name": "...", "updated": "..."},
+        #       ...
+        #   ],
+        #   "distances": [0.75, 0.81, ...]
+        # }
+
         records = []
+        for i, source in enumerate(rag_result.get("sources", [])):
+            distance = float(rag_result.get("distances", [])[i]) if i < len(rag_result.get("distances", [])) else 0.0
 
-        # если запрос слишком короткий или пустой — не дергаем базу знаний
-        if not query or len(query) < 3:
-            return {"records": []}
+            # Переводим «distance» в «score» (чем меньше distance, тем выше score)
+            # Простая эвристика: score = 1 / (1 + distance)
+            score = 1.0 / (1.0 + distance) if distance >= 0 else 0.0
 
-        for page in pages:
-            content = (page.get("content") or "")
-            content_l = content.lower()
-
-            # быстрая фильтрация по статье: если нет слова — вообще не чанкать
-            if query not in content_l:
+            # Фильтрация по порогу
+            if score < request.retrieval_setting.score_threshold:
                 continue
 
-            base_meta = {
-                "path": page.get("url", ""),
-                "description": page.get("title", ""),
-                "space": page.get("space", ""),
-                "name": page.get("name", ""),
-                "updated": page.get("updated"),
-            }
-
-            for i, chunk in enumerate(chunk_text(content)):
-                chunk_l = chunk.lower()
-                if query not in chunk_l:
-                    continue
-
-                records.append({
-                    "metadata": {**base_meta, "chunk_index": i},
-                    "score": 1.0,
-                    "title": page.get("title", ""),
-                    "content": chunk,
-                })
-
-        top_k = getattr(request.retrieval_setting, "top_k", None) or 10
-        records = records[:top_k]
+            # Собираем запись в формате, который ждёт CorpGPT
+            records.append({
+                "metadata": {
+                    "path": source.get("url", ""),
+                    "description": source.get("page", ""),
+                    "space": source.get("space", ""),
+                    "name": source.get("name", ""),
+                    "updated": source.get("updated", ""),
+                    "distance": distance,
+                },
+                "score": score,
+                "title": source.get("page", ""),
+                "content": source.get("content", ""),
+            })
 
         return {"records": records}
+
+    except Exception as e:
+        # В случае ошибки возвращаем пустой список, чтобы не ломать CorpGPT
+        print(f"❌ /retrieval RAG error: {e}")
+        return {"records": []}
+
 
 
 
