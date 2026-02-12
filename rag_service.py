@@ -58,9 +58,9 @@ class RAGService:
         return chunks
     
     def retrieve(self, query: str, k: int = 3) -> Dict:
-    """
-    Найти k наиболее релевантных чанков для запроса
-    """
+        """
+        Найти k наиболее релевантных чанков для запроса
+        """
         # 1. Создать эмбеддинг запроса
         query_embedding = self.get_embedding(query)
         
@@ -74,13 +74,13 @@ class RAGService:
         
         # 4. Создать промпт по шаблону Mistrал
         prompt = f"""Context information is below.
-    ---------------------
-    {context}
-    ---------------------
-    Given the context information and not prior knowledge, answer the query.
-    Query: {query}
-    Answer:
-    """
+        ---------------------
+        {context}
+        ---------------------
+        Given the context information and not prior knowledge, answer the query.
+        Query: {query}
+        Answer:
+        """
         
         return {
             "prompt": prompt,
