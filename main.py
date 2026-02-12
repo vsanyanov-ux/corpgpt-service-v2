@@ -7,6 +7,7 @@ import requests
 import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict
 from urllib.parse import quote
+from rag_service import RAGService
 
 app = FastAPI()
 
@@ -25,6 +26,45 @@ XWIKI_EXPORT_URL = os.getenv(
 )
 
 print(f"DEBUG: Confluence_BASE_URL = {Confluence_BASE_URL}")
+
+# Инициализация RAG сервиса
+rag_service = RAGService(api_key=os.getenv("MISTRAL_API_KEY"))
+
+@app.get("/")
+async def root():
+    return {"message": "CorpGPT XWiki RAG Service"}
+
+@app.post("/rag/query")
+async def rag_query(question: str, k: int = 3):
+    """
+    RAG endpoint для поиска релевантного контекста
+    """
+    try:
+        result = rag_service.retrieve(question, k=k)
+        return {
+            "success": True,
+            "question": question,
+            "answer_prompt": result["prompt"],
+            "sources": result["sources"],
+            "distances": result["distances"]
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/rag/index")
+async def trigger_indexing():
+    """
+    Endpoint для запуска индексации (защитите в продакшне!)
+    """
+    from indexer import index_xwiki_content
+    try:
+        await index_xwiki_content(rag_service)
+        return {"success": True, "message": "Indexing completed"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # CorpGPT Request Model
 class RetrievalSettings(BaseModel):
