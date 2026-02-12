@@ -61,44 +61,44 @@ class RAGService:
     """
     Найти k наиболее релевантных чанков для запроса
     """
-    # 1. Создать эмбеддинг запроса
-    query_embedding = self.get_embedding(query)
-    
-    # 2. Поиск в векторной базе
-    retrieved_chunks, distances = self.vector_store.search(query_embedding, k=k)
-    
-    # 3. Построить контекст
-    context = "\n---------------------\n".join([
-        chunk["chunk_text"] for chunk in retrieved_chunks
-    ])
-    
-    # 4. Создать промпт по шаблону Mistral
-    prompt = f"""Context information is below.
----------------------
-{context}
----------------------
-Given the context information and not prior knowledge, answer the query.
-Query: {query}
-Answer:
-"""
-    
-    return {
-        "prompt": prompt,
-        "context": context,
-        "retrieved_chunks": retrieved_chunks,
-        "sources": [
-            {
-                "page":   chunk["page_name"],
-                "url":    chunk["url"],
-                "content": chunk["chunk_text"],   # ← добавили текст чанка
-                "space":  chunk.get("space", ""),
-                "name":   chunk.get("name", ""),
-                "updated": chunk.get("updated", ""),
-            }
-            for chunk in retrieved_chunks
-        ],
-        "distances": distances.tolist() if len(distances) > 0 else []
-    }
+        # 1. Создать эмбеддинг запроса
+        query_embedding = self.get_embedding(query)
+        
+        # 2. Поиск в векторной базе
+        retrieved_chunks, distances = self.vector_store.search(query_embedding, k=k)
+        
+        # 3. Построить контекст
+        context = "\n---------------------\n".join(
+            [chunk["chunk_text"] for chunk in retrieved_chunks]
+        )
+        
+        # 4. Создать промпт по шаблону Mistrал
+        prompt = f"""Context information is below.
+    ---------------------
+    {context}
+    ---------------------
+    Given the context information and not prior knowledge, answer the query.
+    Query: {query}
+    Answer:
+    """
+        
+        return {
+            "prompt": prompt,
+            "context": context,
+            "retrieved_chunks": retrieved_chunks,
+            "sources": [
+                {
+                    "page":    chunk.get("page_name", ""),
+                    "url":     chunk.get("url", ""),
+                    "content": chunk.get("chunk_text", ""),
+                    "space":   chunk.get("space", ""),
+                    "name":    chunk.get("name", ""),
+                    "updated": chunk.get("updated", ""),
+                }
+                for chunk in retrieved_chunks
+            ],
+            "distances": distances.tolist() if len(distances) > 0 else [],
+        }
 
     
     def save_index(self):
