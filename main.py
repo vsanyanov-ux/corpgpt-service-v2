@@ -370,14 +370,23 @@ async def health():
 
 @app.post("/retrieval")
 async def retrieval(request: RetrievalRequest):
-    """CorpGPT External Knowledge endpoint"""
-
-    # XWIKI: берём готовый JSON-экспорт и режем на чанки
     if request.knowledge_id == "xwiki":
         pages = fetch_xwiki_export()
+        query = (request.query or "").strip().lower()
         records = []
 
+        # если запрос слишком короткий или пустой — не дергаем базу знаний
+        if not query or len(query) < 3:
+            return {"records": []}
+
         for page in pages:
+            content = (page.get("content") or "")
+            content_l = content.lower()
+
+            # быстрая фильтрация по статье: если нет слова — вообще не чанкать
+            if query not in content_l:
+                continue
+
             base_meta = {
                 "path": page.get("url", ""),
                 "description": page.get("title", ""),
@@ -385,46 +394,23 @@ async def retrieval(request: RetrievalRequest):
                 "name": page.get("name", ""),
                 "updated": page.get("updated"),
             }
-            for i, chunk in enumerate(chunk_text(page.get("content", ""))):
+
+            for i, chunk in enumerate(chunk_text(content)):
+                chunk_l = chunk.lower()
+                if query not in chunk_l:
+                    continue
+
                 records.append({
-                    "metadata": {
-                        **base_meta,
-                        "chunk_index": i,
-                    },
+                    "metadata": {**base_meta, "chunk_index": i},
                     "score": 1.0,
                     "title": page.get("title", ""),
                     "content": chunk,
                 })
 
+        top_k = getattr(request.retrieval_setting, "top_k", None) or 10
+        records = records[:top_k]
+
         return {"records": records}
 
-    # Остальные — как раньше
-    if request.knowledge_id == "confluence":
-        results = await search_confluence(
-            request.query,
-            limit=request.retrieval_setting.top_k,
-            offset=0
-        )
-    else:
-        results = await search_confluence(
-            request.query,
-            limit=request.retrieval_setting.top_k,
-            offset=0
-        )
 
-    records = []
-    for result in results:
-        text = result.excerpt
-        print(f"🧪 DEBUG RAW CONTENT (len={len(text)}): {text}")
-        records.append({
-            "metadata": {
-                "path": result.url,
-                "description": result.title
-            },
-            "score": 1.0,
-            "title": result.title,
-            "content": text
-        })
-
-    return {"records": records}
 
