@@ -28,7 +28,7 @@ print(f"DEBUG: Confluence_BASE_URL = {Confluence_BASE_URL}")
 
 # CorpGPT Request Model
 class RetrievalSettings(BaseModel):
-    top_k: int = 10
+    top_k: int = 5
     score_threshold: float = 0.5
 
 class RetrievalRequest(BaseModel):
@@ -43,7 +43,7 @@ class SearchResult(BaseModel):
 
 # ===== XWiki FAQ export (CorpGPT) =====
 
-MAX_CHARS = 1200  # размер чанка, потом подберём
+MAX_CHARS = 3000  # размер чанка, потом подберём
 
 def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
     text = (text or "").strip()
