@@ -81,6 +81,64 @@ class SearchResult(BaseModel):
     url: str
     excerpt: str
 
+@app.post("/rag/answer")
+async def rag_answer(question: str, k: int = 3):
+    """
+    Полный RAG цикл: retrieval + генерация ответа через Mistral LLM
+    
+    Args:
+        question: Вопрос пользователя
+        k: Количество релевантных фрагментов для контекста (по умолчанию 3)
+    
+    Returns:
+        JSON с ответом, источниками и метриками
+    """
+    try:
+        # 1. Получить релевантный контекст из векторной базы
+        print(f"🔍 RAG Answer: Processing question: {question}")
+        result = rag_service.retrieve(question, k=k)
+        
+        print(f"📄 Found {len(result['sources'])} relevant sources")
+        
+        # 2. Отправить промпт в Mistral Chat API для генерации ответа
+        from mistralai import Mistral
+        client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
+        
+        print("🤖 Generating answer via Mistral LLM...")
+        chat_response = client.chat.complete(
+            model="mistral-small-latest",  # или "mistral-large-latest" для лучшего качества
+            messages=[
+                {
+                    "role": "user",
+                    "content": result["prompt"]
+                }
+            ],
+            temperature=0.7,  # баланс между креативностью и точностью
+            max_tokens=1000   # максимальная длина ответа
+        )
+        
+        answer = chat_response.choices[0].message.content
+        print(f"✅ Answer generated: {len(answer)} characters")
+        
+        return {
+            "success": True,
+            "question": question,
+            "answer": answer,
+            "sources": result["sources"],
+            "distances": result["distances"],
+            "context_length": len(result["context"]),
+            "model": "mistral-small-latest"
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in rag_answer: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 # ===== XWiki FAQ export (CorpGPT) =====
 
 MAX_CHARS = 3000  # размер чанка, потом подберём
