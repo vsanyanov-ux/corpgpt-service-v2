@@ -55,16 +55,23 @@ async def rag_query(question: str, k: int = 3):
         }
 
 @app.post("/rag/index")
-async def trigger_indexing():
+async def trigger_indexing(x_api_key: str = Header(None)):
     """
-    Endpoint для запуска индексации (защитите в продакшне!)
+    Требуется API ключ в заголовке запроса
     """
+    # Проверяем API ключ
+    expected_key = os.getenv("ADMIN_API_KEY")
+    if not expected_key:
+        raise HTTPException(status_code=500, detail="ADMIN_API_KEY not configured")
+    
+    if x_api_key != expected_key:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+    
+    # Только если ключ правильный - запускаем индексацию
     from indexer import index_xwiki_content
-    try:
-        await index_xwiki_content(rag_service)
-        return {"success": True, "message": "Indexing completed"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    await index_xwiki_content(rag_service)
+    return {"success": True, "message": "Indexing completed"}
+
 
 @app.on_event("startup")
 async def startup_event():
