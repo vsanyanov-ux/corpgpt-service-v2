@@ -66,6 +66,30 @@ async def trigger_indexing():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.on_event("startup")
+async def startup_event():
+    """
+    Выполняется ОДИН РАЗ при запуске FastAPI приложения
+    """
+    print("🚀 Starting up CorpGPT RAG Service...")
+    
+    # 1. Проверяем, сколько векторов в индексе
+    total_vectors = rag_service.vector_store.index.ntotal
+    print(f"📊 Current index size: {total_vectors} vectors")
+    
+    # 2. Если индекс пустой - запускаем индексацию
+    if total_vectors == 0:
+        print("⚠️ Index is empty. Starting auto-indexing...")
+        try:
+            from indexer import index_xwiki_content
+            await index_xwiki_content(rag_service)
+            print("✅ Auto-indexing completed successfully")
+        except Exception as e:
+            print(f"❌ Auto-indexing failed: {e}")
+    else:
+        print(f"✅ Index loaded: {total_vectors} vectors ready")
+
+
 # CorpGPT Request Model
 class RetrievalSettings(BaseModel):
     top_k: int = 5
