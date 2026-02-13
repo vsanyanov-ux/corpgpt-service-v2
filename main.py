@@ -172,25 +172,38 @@ async def rag_answer(question: str, k: int = 3):
 
 # ===== XWiki FAQ export (CorpGPT) =====
 
-MAX_CHARS = 3000  # размер чанка, потом подберём
+MAX_CHARS = 2000
+OVERLAP_CHARS = 300  # добавлен overlap
 
-def chunk_text(text: str, max_chars: int = MAX_CHARS) -> list[str]:
+def chunk_text(text: str, max_chars: int = MAX_CHARS, overlap: int = OVERLAP_CHARS) -> list[str]:
     text = (text or "").strip()
     if not text:
         return []
     chunks = []
     start = 0
     n = len(text)
+
     while start < n:
         end = min(start + max_chars, n)
+
         cut = text.rfind("\n", start, end)
         if cut == -1:
             cut = text.rfind(". ", start, end)
         if cut == -1 or cut <= start + max_chars * 0.5:
             cut = end
-        chunks.append(text[start:cut].strip())
-        start = cut
+
+        chunk = text[start:cut].strip()
+        if chunk:
+            chunks.append(chunk)
+
+        if cut >= n:
+            break
+
+        # ключевая строчка: шаг с overlap
+        start = max(cut - overlap, 0)
+
     return chunks
+
 
 import json
 import logging
@@ -225,8 +238,6 @@ def fetch_xwiki_export() -> list[dict]:
 
     print(f"XWIKI_EXPORT: total pages = {len(raw_pages)}")
     return raw_pages
-
-
 
 async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
     """Search Confluence with pagination"""
