@@ -27,7 +27,7 @@ XWIKI_EXPORT_URL = os.getenv(
 
 print(f"DEBUG: Confluence_BASE_URL = {Confluence_BASE_URL}")
 
-# Инициализация RAG сервиса
+# Инициализация RAG-сервиса
 rag_service = RAGService(api_key=os.getenv("MISTRAL_API_KEY"))
 
 @app.get("/")
