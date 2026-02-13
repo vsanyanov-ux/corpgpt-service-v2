@@ -59,7 +59,7 @@ async def trigger_indexing(x_api_key: str = Header(None)):
     """
     Требуется API ключ в заголовке запроса
     """
-    # Проверяем API ключ
+    # Проверяем API-ключ
     expected_key = os.getenv("ADMIN_API_KEY")
     if not expected_key:
         raise HTTPException(status_code=500, detail="ADMIN_API_KEY not configured")
