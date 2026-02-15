@@ -31,7 +31,6 @@ FastAPI‑сервис, который подключает внешнюю ба�
   - `GET /health` — health‑check.  
   - `POST /rag/index` — индексация XWiki (требует заголовок `x-api-key: ADMIN_API_KEY`).  
   - `POST /rag/query` — семантический retrieval: промпт + источники + расстояния.  
-  - `POST /rag/answer` — полный RAG: retrieval + ответ через `mistral-small-latest`.  
   - `POST /retrieval` — адаптер под CorpGPT (возвращает `records` в ожидаемом формате).
 
 - `rag_service.py`  
