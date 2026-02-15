@@ -60,7 +60,6 @@ FastAPI‑сервис, который подключает внешнюю ба�
 Опциональные:
 
 - `XWIKI_BASE_URL`, `XWIKI_USERNAME`, `XWIKI_PASSWORD` — доступ к XWiki REST.  
-- `CONFLUENCE_BASE_URL`, `CONFLUENCE_USERNAME`, `CONFLUENCE_API_TOKEN` — задел под Confluence.
 
 ***
 
@@ -83,7 +82,7 @@ curl -X POST https://<your-service>/rag/index \
 
 ## Интеграция с CorpGPT
 
-В CorpGPT (Mistral Studio):
+В CorpGPT:
 
 - Внешняя база знаний `xWiki` настроена на вызов endpoint`а:
 
