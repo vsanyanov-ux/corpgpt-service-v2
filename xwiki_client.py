@@ -62,7 +62,7 @@ def chunk_text(text: str, max_chars: int = MAX_CHARS, overlap: int = OVERLAP_CHA
 def fetch_xwiki_export() -> List[Dict[str, Any]]:
     """
     Тянет JSON-экспорт XWiki из XWIKI_EXPORT_URL.
-    Возвращает список страниц (raw_pages), как у тебя сейчас в indexer/main.
+    Возвращает список страниц (raw_pages), как у тебя сейчас в indexer.
     """
     if not XWIKI_EXPORT_URL:
         return []
@@ -75,11 +75,9 @@ def fetch_xwiki_export() -> List[Dict[str, Any]]:
     print("XWIKI_EXPORT raw first 200:", repr(text[:200]))
 
     try:
-        # сначала строгий парсер
         raw_pages = json.loads(text)
     except JSONDecodeError as e:
         print("XWIKI_EXPORT: strict JSON parse error:", e)
-        # fallback — менее строгий режим
         try:
             raw_pages = json.loads(text, strict=False)
             print("XWIKI_EXPORT: parsed with strict=False fallback")
@@ -90,7 +88,7 @@ def fetch_xwiki_export() -> List[Dict[str, Any]]:
     print(f"XWIKI_EXPORT: total pages = {len(raw_pages)}")
     return raw_pages
 
-# ========= SEARCH =========
+# ========= SEARCH (RAW REST) =========
 
 
 async def search_xwiki_raw(query: str, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
@@ -99,8 +97,6 @@ async def search_xwiki_raw(query: str, limit: int = 10, offset: int = 0) -> List
     Возвращает список raw-объектов из 'searchResults' (как есть).
     """
     if not XWIKI_BASE_URL:
-        # здесь можно кидать своё исключение, но проще пусть вызывающая сторона решает,
-        # как маппить это в HTTPException
         raise RuntimeError("XWIKI_BASE_URL is not configured")
 
     limit = min(limit, 50)
@@ -127,6 +123,8 @@ async def search_xwiki_raw(query: str, limit: int = 10, offset: int = 0) -> List
         data = response.json()
         print(f"✅ DEBUG: Got {len(data.get('searchResults', []))} results from API")
         return data.get("searchResults", [])
+
+# ========= SEARCH (ENRICHED) =========
 
 
 async def enrich_xwiki_results(raw_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
