@@ -8,14 +8,12 @@ import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict
 from urllib.parse import quote
 from rag_service import RAGService
+from confluence_client import search_confluence_raw, ConfluenceNotConfigured
+
 
 app = FastAPI()
 
 # Load environment variables
-Confluence_BASE_URL = os.getenv("CONFLUENCE_BASE_URL", "")
-Confluence_USERNAME = os.getenv("CONFLUENCE_USERNAME", "")
-Confluence_PASSWORD = os.getenv("CONFLUENCE_API_TOKEN", "")
-
 XWIKI_BASE_URL = os.getenv("XWIKI_BASE_URL", "")
 XWIKI_USERNAME = os.getenv("XWIKI_USERNAME", "")
 XWIKI_PASSWORD = os.getenv("XWIKI_PASSWORD", "")
@@ -25,7 +23,7 @@ XWIKI_EXPORT_URL = os.getenv(
     "http://158.255.1.153:8080/bin/view/Tech/CorpGPTExport/?outputSyntax=plain&xpage=plain"
 )
 
-print(f"DEBUG: Confluence_BASE_URL = {Confluence_BASE_URL}")
+print(f"DEBUG: luence_BASE_URL = {luence_BASE_URL}")
 
 # Инициализация RAG-сервиса
 rag_service = RAGService(api_key=os.getenv("MISTRAL_API_KEY"))
@@ -239,60 +237,6 @@ def fetch_xwiki_export() -> list[dict]:
     print(f"XWIKI_EXPORT: total pages = {len(raw_pages)}")
     return raw_pages
 
-async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
-    """Search Confluence with pagination"""
-    if not Confluence_BASE_URL:
-        raise HTTPException(status_code=500, detail="Confluence_BASE_URL is not configured")
-    
-    limit = min(limit, 50)
-    
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            cql_query = f'text ~ "{query}"'
-            
-            response = await client.get(
-                f"{Confluence_BASE_URL}/rest/api/content/search",
-                params={
-                    "cql": cql_query,
-                    "limit": limit,
-                    "start": offset,
-                    "expand": "body.view"
-                },
-                auth=(Confluence_USERNAME, Confluence_PASSWORD),
-                follow_redirects=True
-            )
-            
-            if response.status_code != 200:
-                return []
-            
-            data = response.json()
-            results = []
-            
-            for result in data.get("results", [])[:limit]:
-                # Get full content from body.view.value instead of short excerpt
-                body_html = result.get('body', {}).get('view', {}).get('value', '')
-                
-                # Clean HTML tags to get plain text
-                clean_text = re.sub('<[^<]+?>', '', body_html)
-                # Remove extra whitespace
-                clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-                
-                # Use full cleaned text (not just 200 chars)
-                content = clean_text if clean_text else result.get("excerpt", "")
-                
-                try:
-                    results.append(SearchResult(
-                        title=result.get("title", ""),
-                        url=result.get("_links", {}).get("webui", ""),
-                        excerpt=content
-                    ))
-                except Exception:
-                    continue
-            
-            return results
-        
-    except Exception as e:
-        return []
 
 async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
     """Search XWiki using its REST API."""
@@ -495,6 +439,44 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
         # 4. Return results ONLY after the loop finishes
         print(f"🏁 DEBUG: Returning {len(results)} results")  # DEBUG 8
         return results
+
+
+async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
+    """Search Confluence with pagination"""
+    try:
+        data = await search_confluence_raw(query=query, limit=limit, offset=offset)
+    except ConfluenceNotConfigured as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        return []
+
+    if not data:
+        return []
+
+    results: List[SearchResult] = []
+
+    for result in data.get("results", [])[:limit]:
+        body_html = result.get("body", {}).get("view", {}).get("value", "")
+
+        # Clean HTML tags to get plain text
+        clean_text = re.sub("<[^<]+?>", "", body_html)
+        clean_text = re.sub(r"\s+", " ", clean_text).strip()
+
+        content = clean_text if clean_text else result.get("excerpt", "")
+
+        try:
+            results.append(
+                SearchResult(
+                    title=result.get("title", ""),
+                    url=result.get("_links", {}).get("webui", ""),
+                    excerpt=content,
+                )
+            )
+        except Exception:
+            continue
+
+    return results
+
 
 @app.get("/")
 async def root():
