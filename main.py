@@ -8,8 +8,6 @@ import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict
 from urllib.parse import quote
 from rag_service import RAGService
-from confluence_client import search_confluence_raw, ConfluenceNotConfigured
-
 
 app = FastAPI()
 
@@ -22,8 +20,6 @@ XWIKI_EXPORT_URL = os.getenv(
     "XWIKI_EXPORT_URL",
     "http://158.255.1.153:8080/bin/view/Tech/CorpGPTExport/?outputSyntax=plain&xpage=plain"
 )
-
-print(f"DEBUG: luence_BASE_URL = {luence_BASE_URL}")
 
 # Инициализация RAG-сервиса
 rag_service = RAGService(api_key=os.getenv("MISTRAL_API_KEY"))
@@ -439,52 +435,6 @@ async def search_xwiki(query: str, limit: int = 10, offset: int = 0) -> List[Sea
         # 4. Return results ONLY after the loop finishes
         print(f"🏁 DEBUG: Returning {len(results)} results")  # DEBUG 8
         return results
-
-
-async def search_confluence(query: str, limit: int = 10, offset: int = 0) -> List[SearchResult]:
-    """Search Confluence with pagination"""
-    try:
-        data = await search_confluence_raw(query=query, limit=limit, offset=offset)
-    except ConfluenceNotConfigured as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except Exception:
-        return []
-
-    if not data:
-        return []
-
-    results: List[SearchResult] = []
-
-    for result in data.get("results", [])[:limit]:
-        body_html = result.get("body", {}).get("view", {}).get("value", "")
-
-        # Clean HTML tags to get plain text
-        clean_text = re.sub("<[^<]+?>", "", body_html)
-        clean_text = re.sub(r"\s+", " ", clean_text).strip()
-
-        content = clean_text if clean_text else result.get("excerpt", "")
-
-        try:
-            results.append(
-                SearchResult(
-                    title=result.get("title", ""),
-                    url=result.get("_links", {}).get("webui", ""),
-                    excerpt=content,
-                )
-            )
-        except Exception:
-            continue
-
-    return results
-
-
-@app.get("/")
-async def root():
-    return {
-        "status": "online",
-        "service": "Confluence Search API",
-        "confluence_configured": bool(Confluence_BASE_URL)
-    }
 
 @app.get("/health")
 async def health():
