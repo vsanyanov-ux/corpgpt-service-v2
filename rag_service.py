@@ -45,19 +45,35 @@ class RAGService:
             embeddings.extend(batch_embeddings)
         return np.array(embeddings)
     
-    def chunk_text(self, text: str, chunk_size: int = 2048) -> List[str]:
+    def chunk_text(
+        self,
+        text: str,
+        chunk_size: int = 400,
+        overlap: int = 80,
+    ) -> List[str]:
         """
-        Разбить текст на чанки
-        Mistral рекомендует 2048 символов
+        Разбить текст на чанки с overlap.
+        Например, chunk_size=400, overlap=80.
         """
-        chunks = []
-        for i in range(0, len(text), chunk_size):
-            chunk = text[i:i + chunk_size]
-            if chunk.strip():  # Пропускаем пустые чанки
-                chunks.append(chunk)
-        return chunks
+        text = (text or "").strip()
+        chunks: List[str] = []
+        if not text:
+            return chunks
     
-    def retrieve(self, query: str, k: int = 3) -> Dict:
+        step = max(chunk_size - overlap, 1)
+    
+        for start in range(0, len(text), step):
+            end = start + chunk_size
+            chunk = text[start:end]
+            if chunk.strip():
+                chunks.append(chunk)
+            if end >= len(text):
+                break
+    
+        return chunks
+
+    
+    def retrieve(self, query: str, k: int = 5) -> Dict:
         """
         Найти k наиболее релевантных чанков для запроса
         """
