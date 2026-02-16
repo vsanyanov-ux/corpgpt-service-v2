@@ -48,8 +48,8 @@ class RAGService:
     def chunk_text(
         self,
         text: str,
-        chunk_size: int = 400,
-        overlap: int = 80,
+        chunk_size: int = 500,
+        overlap: int = 100,
     ) -> List[str]:
         """
         Разбить текст на чанки с overlap.
@@ -73,7 +73,7 @@ class RAGService:
         return chunks
 
     
-    def retrieve(self, query: str, k: int = 5) -> Dict:
+    def retrieve(self, query: str, k: int = 7) -> Dict:
         """
         Найти k наиболее релевантных чанков для запроса
         """
