@@ -53,7 +53,7 @@ class RAGService:
     ) -> List[str]:
         """
         Разбить текст на чанки с overlap.
-        Например, chunk_size=400, overlap=80.
+        Например, chunk_size=500, overlap=100.
         """
         text = (text or "").strip()
         chunks: List[str] = []
