@@ -44,8 +44,8 @@ async def index_xwiki_content(rag_service: RAGService):
         print(f"   Content length: {len(content):,} chars")
 
         try:
-            # 2. Разбить на чанки (400 символов)
-            chunks = rag_service.chunk_text(content, chunk_size=400, overlap=80)
+            # 2. Разбить на чанки (500 символов)
+            chunks = rag_service.chunk_text(content, chunk_size=500, overlap=100)
             print(f"   📦 Split into {len(chunks)} chunks")
 
             if not chunks:
