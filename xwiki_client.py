@@ -24,7 +24,7 @@ XWIKI_EXPORT_URL = os.getenv(
 # ========= CHUNKING =========
 
 MAX_CHARS = 2000
-OVERLAP_CHARS = 300  # добавлен overlap
+OVERLAP_CHARS = 300  # размер overlap рекомендуется 10-20%
 
 
 def chunk_text(text: str, max_chars: int = MAX_CHARS, overlap: int = OVERLAP_CHARS) -> List[str]:
