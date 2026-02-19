@@ -62,7 +62,7 @@ def chunk_text(text: str, max_chars: int = MAX_CHARS, overlap: int = OVERLAP_CHA
 def fetch_xwiki_export() -> List[Dict[str, Any]]:
     """
     Тянет JSON-экспорт XWiki из XWIKI_EXPORT_URL.
-    Возвращает список страниц (raw_pages), как у тебя сейчас в indexer.
+    Возвращает список страниц (raw_pages), как у тебя сейчас в indexer.py
     """
     if not XWIKI_EXPORT_URL:
         return []
