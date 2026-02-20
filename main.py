@@ -7,6 +7,7 @@ from xwiki_client import search_xwiki_raw, enrich_xwiki_results, fetch_xwiki_exp
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 app = FastAPI()
 
@@ -115,11 +116,15 @@ async def retrieval(request: RetrievalRequest):
     """
     Совместимо с CorpGPT и Dify External KB.
     """
+    logger.info(f"Dify/CorpGPT req: knowledge_id={request.knowledge_id}, query='{request.query}', top_k={getattr(request.retrieval_setting, 'top_k', 5)}")
+    
     if request.knowledge_id != "xwiki":
+        logger.warning(f"Wrong knowledge_id: {request.knowledge_id}")
         return {"records": []}
 
     query = (request.query or "").strip()
     if not query or len(query) < 2:
+        logger.info("Query too short")
         return {"records": []}
 
     top_k = getattr(request.retrieval_setting, "top_k", 5)
@@ -127,14 +132,18 @@ async def retrieval(request: RetrievalRequest):
 
     try:
         rag_result = rag_service.retrieve(query, k=top_k)
-        print(f"RAG result: {len(rag_result.get('sources', []))} sources")  # debug
-
+        sources_count = len(rag_result.get("sources", []))
+        logger.info(f"RAG retrieve: {sources_count} sources, distances={rag_result.get('distances', [])}")
+        
         records = []
         for i, source in enumerate(rag_result.get("sources", [])):
             distance = float(rag_result.get("distances", [1.0])[i])
-            score = 1.0 / (1.0 + distance)  # 0.5-0.9
+            score = 1.0 / (1.0 + distance)
+            
+            logger.debug(f"Source {i}: distance={distance:.3f}, score={score:.3f}, title='{source.get('page', '')[:50]}...'")
 
             if score < score_threshold:
+                logger.debug(f"Filtered: score {score:.3f} < threshold {score_threshold}")
                 continue
 
             record_base = {
@@ -147,16 +156,16 @@ async def retrieval(request: RetrievalRequest):
                     "space": source.get("space", ""),
                     "name": source.get("name", ""),
                     "updated": source.get("updated", ""),
-                    "distance": distance,  # CorpGPT extra
+                    "distance": distance,
                 }
             }
             records.append(record_base)
 
-        print(f"Final records: {len(records)}")  # debug
+        logger.info(f"Final records sent: {len(records)}/{sources_count} (threshold={score_threshold})")
         return {"records": records[:top_k]}
 
     except Exception as e:
-        print(f"❌ RAG error: {e}")
+        logger.error(f"❌ RAG error: {e}", exc_info=True)
         return {"records": []}
 
 
