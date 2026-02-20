@@ -113,10 +113,8 @@ async def health():
 @app.post("/retrieval")
 async def retrieval(request: RetrievalRequest):
     """
-    CorpGPT → внешний источник.
-    Теперь внутри используем семантический RAG вместо простого substring-поиска.
+    Совместимо с CorpGPT и Dify External KB.
     """
-    # Пока работаем только с xwiki
     if request.knowledge_id != "xwiki":
         return {"records": []}
 
@@ -124,55 +122,43 @@ async def retrieval(request: RetrievalRequest):
     if not query or len(query) < 2:
         return {"records": []}
 
-    top_k = getattr(request.retrieval_setting, "top_k", None) or 5
+    top_k = getattr(request.retrieval_setting, "top_k", 5)
+    score_threshold = getattr(request.retrieval_setting, "score_threshold", 0.5)
 
     try:
-        # 1. Делаем семантический поиск через RAG
         rag_result = rag_service.retrieve(query, k=top_k)
-
-        # rag_result ожидается в формате:
-        # {
-        #   "prompt": "...",
-        #   "sources": [
-        #       {"page": "...", "url": "...", "content": "...", "space": "...", "name": "...", "updated": "..."},
-        #       ...
-        #   ],
-        #   "distances": [0.75, 0.81, ...]
-        # }
+        print(f"RAG result: {len(rag_result.get('sources', []))} sources")  # debug
 
         records = []
         for i, source in enumerate(rag_result.get("sources", [])):
-            distance = float(rag_result.get("distances", [])[i]) if i < len(rag_result.get("distances", [])) else 0.0
+            distance = float(rag_result.get("distances", [1.0])[i])
+            score = 1.0 / (1.0 + distance)  # 0.5-0.9
 
-            # Переводим «distance» в «score» (чем меньше distance, тем выше score)
-            # Простая эвристика: score = 1 / (1 + distance)
-            score = 1.0 / (1.0 + distance) if distance >= 0 else 0.0
-
-            # Фильтрация по порогу
-            if score < request.retrieval_setting.score_threshold:
+            if score < score_threshold:
                 continue
 
-            # Собираем запись в формате, который ждёт CorpGPT
-            records.append({
+            record_base = {
+                "score": score,
+                "title": source.get("page") or source.get("name", ""),
+                "content": source.get("content", ""),
                 "metadata": {
                     "path": source.get("url", ""),
                     "description": source.get("page", ""),
                     "space": source.get("space", ""),
                     "name": source.get("name", ""),
                     "updated": source.get("updated", ""),
-                    "distance": distance,
-                },
-                "score": score,
-                "title": source.get("page", ""),
-                "content": source.get("content", ""),
-            })
+                    "distance": distance,  # CorpGPT extra
+                }
+            }
+            records.append(record_base)
 
-        return {"records": records}
+        print(f"Final records: {len(records)}")  # debug
+        return {"records": records[:top_k]}
 
     except Exception as e:
-        # В случае ошибки возвращаем пустой список, чтобы не ломать CorpGPT
-        print(f"❌ /retrieval RAG error: {e}")
+        print(f"❌ RAG error: {e}")
         return {"records": []}
+
 
 
 
