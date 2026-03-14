@@ -16,10 +16,7 @@ XWIKI_BASE_URL = os.getenv("XWIKI_BASE_URL", "")
 XWIKI_USERNAME = os.getenv("XWIKI_USERNAME", "")
 XWIKI_PASSWORD = os.getenv("XWIKI_PASSWORD", "")
 
-XWIKI_EXPORT_URL = os.getenv(
-    "XWIKI_EXPORT_URL",
-    "http://158.255.1.153/bin/get/Tech/CorpGPTExport/WebHome?xpage=plain&outputSyntax=plain",
-)
+XWIKI_EXPORT_URL = os.getenv("XWIKI_EXPORT_URL", "")
 
 # ========= CHUNKING =========
 
