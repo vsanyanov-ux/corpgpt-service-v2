@@ -151,6 +151,7 @@ async def retrieval(request: RetrievalRequest):
                 "title": source.get("page") or source.get("name", ""),
                 "content": source.get("content", ""),
                 "metadata": {
+                    "document_id": source.get("url", "") or source.get("name", ""),
                     "path": source.get("url", ""),
                     "description": source.get("page", ""),
                     "space": source.get("space", ""),
