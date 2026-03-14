@@ -61,10 +61,13 @@ def fetch_xwiki_export() -> List[Dict[str, Any]]:
     Тянет JSON-экспорт XWiki из XWIKI_EXPORT_URL.
     Возвращает список страниц (raw_pages), как у тебя сейчас в indexer.py
     """
+    print(f"🔍 DEBUG: fetch_xwiki_export starting with URL: '{XWIKI_EXPORT_URL}'")
     if not XWIKI_EXPORT_URL:
+        print("❌ DEBUG: XWIKI_EXPORT_URL is EMPTY or NOT SET")
         return []
 
     auth = (XWIKI_USERNAME, XWIKI_PASSWORD) if XWIKI_USERNAME and XWIKI_PASSWORD else None
+    print(f"🔍 DEBUG: Using auth: {'YES' if auth else 'NO'} (User: '{XWIKI_USERNAME}')")
     resp = requests.get(XWIKI_EXPORT_URL, timeout=10, auth=auth)
     resp.raise_for_status()
 
