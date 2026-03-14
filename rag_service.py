@@ -1,5 +1,12 @@
 import os
-from mistralai import Mistral
+try:
+    from mistralai import Mistral
+except ImportError:
+    try:
+        from mistralai.client import Mistral
+    except ImportError:
+        # Fallback for older versions if needed, though Mistral class is 1.0+
+        from mistralai.client import MistralClient as Mistral
 import numpy as np
 from typing import List, Dict
 from vector_store import VectorStore

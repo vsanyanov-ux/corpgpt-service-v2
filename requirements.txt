@@ -6,6 +6,6 @@ python-multipart
 requests>=2.31.0
 
 # Новые зависимости для RAG с Mistral
-mistralai>=1.1.0
+mistralai==1.1.0
 faiss-cpu>=1.7.4
 numpy>=1.24.0
