@@ -152,69 +152,26 @@ curl -X POST "http://localhost:8000/rag/answer?question=систему%20бло�
 4. Для каждого чанка `rag_service.py` создаёт текстовые эмбеддинги через Mistral embeddings API и связывает их с расширенными метаданными (title, URL, space, page name, chunk index, updated timestamp и т.д.).
 5. `vector_store.py` сохраняет результирующие векторы в FAISS индекс вместе с метаданными и обеспечивает эффективный поиск по сходству и персистентность (сохранение/загрузка индекса на диск).
 
-### Схема жизненного цикла запроса
-
-```text
-[Пользователь в CorpGPT]
-  |
-  v
-[CorpGPT /retrieval webhook]
-  |
-  v
-main.py
-(FastAPI, endpoint /retrieval)
-  |
-  v
-rag_service.py
-(эмбеддинг запроса + поиск)
-  |
-  v
-vector_store.py (FAISS)
-(поиск по индексированным
- чанкам из XWiki)
-  |
-  v
-rag_service.py
-(сбор контекста и метаданных)
-  |
-  v
-main.py
-(форматирование records[]
- под протокол CorpGPT)
-  |
-  v
-CorpGPT
-(генерирует ответ для
- пользователя)
-```
-
-### Схема жизненного цикла данных (индексация)
-
-```text
-XWiki
-(страницы, экспорт)
-  |
-  v
-xwiki_client.py
-(REST + export JSON API)
-  |
-  v
-indexer.py
-(парсинг экспорта, чанкование,
- вызов эмбеддингов, сбор метаданных)
-  |
-  v
-rag_service.py
-(батч-эмбеддинги через
- Mistral Embeddings)
-  |
-  v
-vector_store.py (FAISS)
-(сохранение векторов +
- метаданных)
-  |
-  v
-сохранение индекса на диск
+### Схема архитектуры (Mermaid)
+ 
+```mermaid
+graph TD
+    User([Пользователь]) --> Dify[Dify / CorpGPT]
+    Dify -->|Retrieval Request| Service[FastAPI RAG Service]
+    
+    subgraph Service [RAG Service]
+        API[main.py: /retrieval] -->|Search| RAG[rag_service.py]
+        RAG -->|Vector Search| FAISS[(FAISS Vector Store)]
+        RAG -->|Embeddings| Mistral[Mistral AI API]
+    end
+    
+    subgraph DataPipeline [Пайплайн данных]
+        Indexer[indexer.py] -->|Fetch JSON| XWiki[XWiki Server]
+        Indexer -->|Chunk & Embed| RAG
+    end
+    
+    XWiki -.->|JSON Export| Indexer
+    Service -.->|Records JSON| Dify
 ```
 
 ### Ответственность модулей
