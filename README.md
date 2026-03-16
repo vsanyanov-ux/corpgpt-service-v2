@@ -131,47 +131,108 @@ curl -X POST "http://localhost:8000/rag/answer?question=систему%20бло�
 
 ---
 
-## Архитектура
+## Архитектура и рабочие процессы
 
 Сервис реализует классический RAG (Retrieval-Augmented Generation) пайплайн поверх XWiki. CorpGPT вызывает этот сервис через webhook `/retrieval` для получения релевантных фрагментов знаний по запросу пользователя.
 
-### Поток запроса (CorpGPT → RAG сервис)
+### 1. Общая архитектура компонентов
 
-1. Пользователь задаёт вопрос в CorpGPT, используя knowledge base `xwiki`.
-2. CorpGPT отправляет HTTP POST запрос на endpoint `/retrieval` с `knowledge_id`, текстом запроса и параметрами поиска (`top_k`, `score_threshold`).
-3. `main.py` (FastAPI приложение) валидирует запрос и делегирует поиск RAG-слою в `rag_service.py`.
-4. `rag_service.retrieve()` создаёт эмбеддинг запроса через Mistral embeddings и выполняет поиск по векторному хранилищу в `vector_store.py`.
-5. Найденные чанки (с метаданными и расстояниями) преобразуются в формат `records[]` CorpGPT и возвращаются из `/retrieval`.
-6. CorpGPT использует эти records как контекст для генерации финального ответа пользователю.
-
-### Поток данных (XWiki → векторное хранилище)
-
-1. Страницы XWiki экспортируются через export endpoint (plain JSON) и/или REST API.
-2. `xwiki_client.py` инкапсулирует все взаимодействия с XWiki (export URL, REST endpoints, нормализация URL, аутентификация) и возвращает очищенные данные страниц.
-3. `indexer.py` организует пайплайн индексации: загружает страницы из XWiki, фильтрует пустой/короткий контент и разбивает каждую страницу на чанки фиксированного размера (например, 2048 символов).
-4. Для каждого чанка `rag_service.py` создаёт текстовые эмбеддинги через Mistral embeddings API и связывает их с расширенными метаданными (title, URL, space, page name, chunk index, updated timestamp и т.д.).
-5. `vector_store.py` сохраняет результирующие векторы в FAISS индекс вместе с метаданными и обеспечивает эффективный поиск по сходству и персистентность (сохранение/загрузка индекса на диск).
-
-### Схема архитектуры (Mermaid)
- 
 ```mermaid
 graph TD
-    User([Пользователь]) --> Dify[Dify / CorpGPT]
-    Dify -->|Retrieval Request| Service[FastAPI RAG Service]
+    subgraph Clients ["Клиенты"]
+        User([Пользователь])
+        CorpGPT[CorpGPT / Dify]
+    end
+
+    subgraph ServiceApp ["FastAPI Service (Render)"]
+        API[main.py]
+        RAG[rag_service.py]
+        Store[vector_store.py]
+        Indexer[indexer.py]
+        XWClient[xwiki_client.py]
+    end
+
+    subgraph ExternalServices ["Внешние сервисы"]
+        Mistral[Mistral AI API]
+        XWiki[XWiki Server]
+    end
+
+    subgraph Persistence ["Хранилище"]
+        FAISS[(xwiki_vectors.index)]
+        Meta[(xwiki_metadata.pkl)]
+    end
+
+    User -->|Запрос| CorpGPT
+    CorpGPT -->|HTTP POST /retrieval| API
+    API -->|Retrieve| RAG
+    RAG -->|Search| Store
+    RAG -->|Embeddings| Mistral
+    Store <-->|Load/Save| Persistence
     
-    subgraph Service [RAG Service]
-        API[main.py: /retrieval] -->|Search| RAG[rag_service.py]
-        RAG -->|Vector Search| FAISS[(FAISS Vector Store)]
-        RAG -->|Embeddings| Mistral[Mistral AI API]
+    Indexer -->|Index Content| RAG
+    Indexer -->|Fetch| XWClient
+    XWClient -->|HTTP GET/REST| XWiki
+    
+    API -.->|Invoke Indexing| Indexer
+```
+
+### 2. Процесс выполнения запроса (Retrieval Flow)
+
+Детальная последовательность шагов при получении вопроса от CorpGPT.
+
+```mermaid
+sequenceDiagram
+    participant CorpGPT as CorpGPT / Dify
+    participant API as main.py (/retrieval)
+    participant RAG as rag_service.py
+    participant Mistral as Mistral AI (mistral-embed)
+    participant Store as vector_store.py (FAISS)
+
+    CorpGPT->>API: POST /retrieval (query, top_k)
+    API->>RAG: retrieve(query, k=top_k)
+    RAG->>Mistral: Создание эмбеддинга запроса
+    Mistral-->>RAG: Вектор [1.0, 0.5, ...]
+    RAG->>Store: search(query_vector, k)
+    Store-->>RAG: Метаданные чанков и расстояния
+    RAG-->>API: {prompt, sources, distances}
+    API-->>CorpGPT: {records: [...]}
+```
+
+### 3. Процесс индексации (Indexing Flow)
+
+Фоновый процесс наполнения векторной базы данными из XWiki.
+
+```mermaid
+sequenceDiagram
+    participant Admin as Admin / Startup
+    participant API as main.py (/rag/index)
+    participant Indexer as indexer.py
+    participant XWClient as xwiki_client.py
+    participant XWiki as XWiki Server
+    participant RAG as rag_service.py
+    participant Mistral as Mistral AI
+    participant Store as vector_store.py
+
+    Admin->>API: POST /rag/index (или автостарт)
+    API->>Indexer: index_xwiki_content(rag_service)
+    Indexer->>XWClient: fetch_xwiki_export()
+    XWClient->>XWiki: GET XWIKI_EXPORT_URL
+    XWiki-->>XWClient: JSON со страницами
+    XWClient-->>Indexer: Список объектов страниц
+    
+    loop Для каждой страницы
+        Indexer->>RAG: chunk_text(content)
+        RAG-->>Indexer: Список текстовых чанков
+        Indexer->>RAG: get_batch_embeddings(chunks)
+        RAG->>Mistral: Пакетное создание эмбеддингов
+        Mistral-->>RAG: Список векторов
+        RAG-->>Indexer: Эмбеддинги
+        Indexer->>Store: add_documents(embeddings, metadata)
     end
     
-    subgraph DataPipeline [Пайплайн данных]
-        Indexer[indexer.py] -->|Fetch JSON| XWiki[XWiki Server]
-        Indexer -->|Chunk & Embed| RAG
-    end
-    
-    XWiki -.->|JSON Export| Indexer
-    Service -.->|Records JSON| Dify
+    Indexer->>RAG: save_index()
+    RAG->>Store: save()
+    Store-->>Admin: Индекс сохранён на диск
 ```
 
 ### Ответственность модулей
